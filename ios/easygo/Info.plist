@@ -35,6 +35,10 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
+	<key>NSCameraUsageDescription</key>
+	<string>QR kod okuma ile başlangıç noktası doğrulamak için kamera izni gerekir.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>İç mekan yönlendirme sırasında adımları takip etmek için hareket verisi kullanılır.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
