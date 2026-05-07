@@ -13,6 +13,7 @@ import {
   FloorPlanUploadModal,
   PermissionModal,
   QRStartModal,
+  WrongDirectionModal,
 } from './src/components';
 import {
   KAT0_BUILDING_MAP,
@@ -142,6 +143,7 @@ function App() {
   const [showQRModal, setShowQRModal] = useState(false);
   const [showDestinationModal, setShowDestinationModal] = useState(false);
   const [showFloorPlanModal, setShowFloorPlanModal] = useState(false);
+  const [showWrongDirectionModal, setShowWrongDirectionModal] = useState(false);
   const [activeScreen, setActiveScreen] = useState<'home' | 'navigation'>('home');
 
   const [permissionsReady, setPermissionsReady] = useState(false);
@@ -163,6 +165,7 @@ function App() {
   const headingRef = useRef(0);
   const targetBearingRef = useRef<number | null>(null);
   const promptedQrNodesRef = useRef<Set<string>>(new Set());
+  const wrongDirectionPromptedRef = useRef(false);
 
   const currentNode: BuildingNode | undefined = useMemo(
     () => KAT0_BUILDING_MAP.nodes.find(n => n.id === currentNodeId),
@@ -367,6 +370,7 @@ function App() {
           setWrongDirectionStreak(0);
           setQrRecalibrationReason(null);
           promptedQrNodesRef.current.clear();
+          wrongDirectionPromptedRef.current = false;
           return;
         }
       }
@@ -387,6 +391,7 @@ function App() {
       setWrongDirectionStreak(0);
       setQrRecalibrationReason(null);
       promptedQrNodesRef.current.clear();
+      wrongDirectionPromptedRef.current = false;
     }
   }, [
     currentNodeId,
@@ -555,9 +560,10 @@ function App() {
     if (!route) {
       return;
     }
-    if (deviationScore >= 6 || wrongDirectionStreak >= 4) {
-      setQrRecalibrationReason('Yon sapmasi algilandi. Lutfen en yakin QR noktasini okutun.');
-      setShowQRModal(true);
+    if (wrongDirectionStreak >= 5 && !wrongDirectionPromptedRef.current) {
+      wrongDirectionPromptedRef.current = true;
+      setShowWrongDirectionModal(true);
+      setQrRecalibrationReason('5 adimdir ters yondesiniz.');
       return;
     }
     const overflow = routeProgressSteps - route.totalSteps;
@@ -566,6 +572,12 @@ function App() {
       setShowQRModal(true);
     }
   }, [deviationScore, wrongDirectionStreak, route, routeProgressSteps]);
+
+  useEffect(() => {
+    if (wrongDirectionStreak === 0) {
+      wrongDirectionPromptedRef.current = false;
+    }
+  }, [wrongDirectionStreak]);
 
   useEffect(() => {
     if (!route || !activeRouteEdge) {
@@ -602,33 +614,62 @@ function App() {
 
   if (activeScreen === 'navigation' && route) {
     return (
-      <NavigationSessionScreen
-        route={route}
-        progressSteps={routeProgressSteps}
-        headingDeg={headingDeg}
-        targetBearingDeg={targetBearingDeg}
-        facingHint={facingHint}
-        targetCardinal={targetCardinal}
-        pinPosition={pinPosition}
-        onBack={() => setActiveScreen('home')}
-        onManualStep={() => {
-          setSensorSteps(prev => prev + 1);
-          const target = targetBearingRef.current;
-          if (target === null) {
-            setRouteProgressSteps(prev => prev + 1);
-            return;
-          }
-          const delta = Math.abs(angleDeltaSigned(headingRef.current, target));
-          if (delta <= 65) {
-            setRouteProgressSteps(prev => prev + 1);
+      <>
+        <NavigationSessionScreen
+          route={route}
+          progressSteps={routeProgressSteps}
+          headingDeg={headingDeg}
+          targetBearingDeg={targetBearingDeg}
+          facingHint={facingHint}
+          targetCardinal={targetCardinal}
+          pinPosition={pinPosition}
+          onBack={() => setActiveScreen('home')}
+          onManualStep={() => {
+            setSensorSteps(prev => prev + 1);
+            const target = targetBearingRef.current;
+            if (target === null) {
+              setRouteProgressSteps(prev => prev + 1);
+              return;
+            }
+            const delta = Math.abs(angleDeltaSigned(headingRef.current, target));
+            if (delta <= 65) {
+              setRouteProgressSteps(prev => prev + 1);
+              setWrongDirectionStreak(0);
+              setDeviationScore(prev => Math.max(0, prev - 1));
+            } else {
+              setWrongDirectionStreak(prev => prev + 1);
+              setDeviationScore(prev => prev + 1);
+            }
+          }}
+        />
+        <WrongDirectionModal
+          visible={showWrongDirectionModal}
+          wrongSteps={wrongDirectionStreak}
+          onClose={() => {
+            setShowWrongDirectionModal(false);
             setWrongDirectionStreak(0);
-            setDeviationScore(prev => Math.max(0, prev - 1));
-          } else {
-            setWrongDirectionStreak(prev => prev + 1);
-            setDeviationScore(prev => prev + 1);
-          }
-        }}
-      />
+            wrongDirectionPromptedRef.current = false;
+          }}
+          onRecalibrate={() => {
+            setShowWrongDirectionModal(false);
+            setShowQRModal(true);
+            wrongDirectionPromptedRef.current = false;
+          }}
+        />
+        <QRStartModal
+          visible={showQRModal}
+          onClose={() => setShowQRModal(false)}
+          nodes={qrStartOptions}
+          onSelectNode={id => {
+            setCurrentNodeId(id);
+            setDeviationScore(0);
+            setWrongDirectionStreak(0);
+            setQrRecalibrationReason(null);
+            wrongDirectionPromptedRef.current = false;
+            setShowQRModal(false);
+          }}
+        />
+      </>
     );
   }
 
@@ -725,6 +766,7 @@ function App() {
               setWrongDirectionStreak(0);
               setDeviationScore(0);
               setQrRecalibrationReason(null);
+              wrongDirectionPromptedRef.current = false;
             }}>
             <Text style={styles.secondaryButtonText}>Adımları Sıfırla</Text>
           </Pressable>
@@ -767,6 +809,7 @@ function App() {
           setDeviationScore(0);
           setWrongDirectionStreak(0);
           setQrRecalibrationReason(null);
+          wrongDirectionPromptedRef.current = false;
           setShowQRModal(false);
         }}
       />

@@ -99,32 +99,34 @@ export function NavigationSessionScreen({
           <View style={styles.compassWrap}>
             <View style={styles.compassFace}>
               <View style={[styles.compassDial, {transform: [{rotate: `${-headingDeg}deg`}]}]}>
-                {Array.from({length: 24}).map((_, i) => {
-                  const angle = i * 15;
-                  const major = i % 2 === 0;
+                {Array.from({length: 72}).map((_, i) => {
+                  const angle = i * 5;
+                  const major = i % 6 === 0;
+                  const northTick = i === 0;
                   return (
                     <View
                       key={`tick-${i}`}
                       style={[
                         styles.tick,
-                        major ? styles.tickMajor : styles.tickMinor,
-                        {transform: [{rotate: `${angle}deg`}, {translateY: -29}]},
+                        northTick
+                          ? styles.tickNorth
+                          : major
+                            ? styles.tickMajor
+                            : styles.tickMinor,
+                        {transform: [{rotate: `${angle}deg`}, {translateY: -36}]},
                       ]}
                     />
                   );
                 })}
+                <Text style={[styles.cardinal, styles.cardinalN]}>K</Text>
+                <Text style={[styles.cardinal, styles.cardinalE]}>D</Text>
+                <Text style={[styles.cardinal, styles.cardinalS]}>G</Text>
+                <Text style={[styles.cardinal, styles.cardinalW]}>B</Text>
               </View>
-              <Text style={[styles.cardinal, styles.cardinalN]}>K</Text>
-              <Text style={[styles.cardinal, styles.cardinalE]}>D</Text>
-              <Text style={[styles.cardinal, styles.cardinalS]}>G</Text>
-              <Text style={[styles.cardinal, styles.cardinalW]}>B</Text>
-              <View style={styles.northPointer} />
-              <View
-                style={[
-                  styles.targetNeedle,
-                  {transform: [{rotate: `${targetBearingDeg ?? headingDeg}deg`}]},
-                ]}
-              />
+              <View style={styles.centerDot} />
+              <View style={styles.crossH} />
+              <View style={styles.crossV} />
+              <View style={styles.fixedTopMarker} />
             </View>
           </View>
         </View>
@@ -198,20 +200,19 @@ const styles = StyleSheet.create({
   bannerTitle: {color: '#fff', fontSize: 17, fontWeight: '800'},
   bannerSub: {color: '#d6e5ec', fontSize: 13, marginTop: 2},
   compassWrap: {
-    width: 112,
-    height: 112,
-    borderRadius: 20,
-    backgroundColor: '#0f1722',
+    width: 108,
+    height: 108,
+    borderRadius: 18,
+    backgroundColor: '#0b0f16',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#355568',
+    borderWidth: 0,
   },
   compassFace: {
     width: 86,
     height: 86,
     borderRadius: 999,
-    backgroundColor: '#111827',
+    backgroundColor: '#0b0f16',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -231,54 +232,71 @@ const styles = StyleSheet.create({
   },
   tickMajor: {
     width: 2,
-    height: 10,
+    height: 12,
+  },
+  tickNorth: {
+    width: 3,
+    height: 18,
+    backgroundColor: '#ef4444',
   },
   tickMinor: {
     width: 1,
-    height: 4,
+    height: 6,
   },
   cardinal: {
     position: 'absolute',
     color: '#f8fafc',
-    fontWeight: '900',
-    fontSize: 14,
+    fontWeight: '800',
+    fontSize: 11,
     zIndex: 30,
     elevation: 30,
-    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: {width: 0, height: 1},
-    textShadowRadius: 2,
+    textShadowRadius: 1,
   },
   cardinalN: {
-    top: -9,
+    top: 12,
     color: '#ef4444',
   },
   cardinalE: {
-    right: -7,
-    top: 36,
+    right: 12,
+    top: 37,
   },
   cardinalS: {
-    bottom: -9,
+    bottom: 12,
   },
   cardinalW: {
-    left: -7,
-    top: 36,
+    left: 12,
+    top: 37,
   },
-  northPointer: {
+  crossH: {
     position: 'absolute',
-    width: 4,
-    height: 14,
-    backgroundColor: '#ef4444',
-    top: 12,
-    borderRadius: 2,
+    width: 18,
+    height: 1,
+    backgroundColor: '#e5e7eb',
+    opacity: 0.85,
   },
-  targetNeedle: {
+  crossV: {
     position: 'absolute',
+    width: 1,
+    height: 18,
+    backgroundColor: '#e5e7eb',
+    opacity: 0.85,
+  },
+  centerDot: {
+    position: 'absolute',
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: '#cbd5e1',
+  },
+  fixedTopMarker: {
+    position: 'absolute',
+    top: -2,
     width: 3,
-    height: 28,
-    backgroundColor: '#38bdf8',
-    top: 31,
-    opacity: 0.9,
+    height: 18,
     borderRadius: 2,
+    backgroundColor: '#f8fafc',
   },
   bottomStats: {
     backgroundColor: '#1f4f67',
