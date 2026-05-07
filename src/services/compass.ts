@@ -1,4 +1,4 @@
-import {magnetometer, SensorTypes, setUpdateIntervalForType} from 'react-native-sensors';
+import CompassHeading from 'react-native-compass-heading';
 
 export type CompassCallbacks = {
   onHeading: (headingDeg: number) => void;
@@ -14,16 +14,13 @@ const normalizeDeg = (value: number): number => {
 };
 
 export const startCompass = ({onHeading}: CompassCallbacks): CompassHandle => {
-  setUpdateIntervalForType(SensorTypes.magnetometer, 220);
-
-  const sub = magnetometer.subscribe(({x, y}) => {
-    const heading = (Math.atan2(y, x) * 180) / Math.PI;
+  CompassHeading.start(3, ({heading}: {heading: number}) => {
     const normalizedHeading = normalizeDeg(heading);
     onHeading(normalizedHeading);
   });
 
   return {
-    stop: () => sub.unsubscribe(),
+    stop: () => CompassHeading.stop(),
   };
 };
 

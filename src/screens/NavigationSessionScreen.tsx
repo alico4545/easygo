@@ -97,16 +97,35 @@ export function NavigationSessionScreen({
             <Text style={styles.bannerSub}>{activeInstruction}</Text>
           </View>
           <View style={styles.compassWrap}>
-            <View style={[styles.needle, {transform: [{rotate: `${headingDeg}deg`}]}]} />
-            <View
-              style={[
-                styles.targetNeedle,
-                {
-                  transform: [{rotate: `${targetBearingDeg ?? headingDeg}deg`}],
-                },
-              ]}
-            />
-            <Text style={styles.compassN}>N</Text>
+            <View style={styles.compassFace}>
+              <View style={[styles.compassDial, {transform: [{rotate: `${-headingDeg}deg`}]}]}>
+                {Array.from({length: 24}).map((_, i) => {
+                  const angle = i * 15;
+                  const major = i % 2 === 0;
+                  return (
+                    <View
+                      key={`tick-${i}`}
+                      style={[
+                        styles.tick,
+                        major ? styles.tickMajor : styles.tickMinor,
+                        {transform: [{rotate: `${angle}deg`}, {translateY: -29}]},
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+              <Text style={[styles.cardinal, styles.cardinalN]}>K</Text>
+              <Text style={[styles.cardinal, styles.cardinalE]}>D</Text>
+              <Text style={[styles.cardinal, styles.cardinalS]}>G</Text>
+              <Text style={[styles.cardinal, styles.cardinalW]}>B</Text>
+              <View style={styles.northPointer} />
+              <View
+                style={[
+                  styles.targetNeedle,
+                  {transform: [{rotate: `${targetBearingDeg ?? headingDeg}deg`}]},
+                ]}
+              />
+            </View>
           </View>
         </View>
 
@@ -179,35 +198,87 @@ const styles = StyleSheet.create({
   bannerTitle: {color: '#fff', fontSize: 17, fontWeight: '800'},
   bannerSub: {color: '#d6e5ec', fontSize: 13, marginTop: 2},
   compassWrap: {
-    width: 58,
-    height: 58,
+    width: 112,
+    height: 112,
+    borderRadius: 20,
+    backgroundColor: '#0f1722',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#355568',
+  },
+  compassFace: {
+    width: 86,
+    height: 86,
     borderRadius: 999,
-    borderWidth: 2,
-    borderColor: '#9ec6d8',
-    backgroundColor: '#143747',
+    backgroundColor: '#111827',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  compassDial: {
+    width: 86,
+    height: 86,
+    borderRadius: 999,
+    position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  needle: {
+  tick: {
     position: 'absolute',
+    backgroundColor: '#f8fafc',
+    borderRadius: 1,
+  },
+  tickMajor: {
     width: 2,
-    height: 22,
-    backgroundColor: '#ffffff',
-    top: 10,
+    height: 10,
+  },
+  tickMinor: {
+    width: 1,
+    height: 4,
+  },
+  cardinal: {
+    position: 'absolute',
+    color: '#f8fafc',
+    fontWeight: '900',
+    fontSize: 14,
+    zIndex: 30,
+    elevation: 30,
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowOffset: {width: 0, height: 1},
+    textShadowRadius: 2,
+  },
+  cardinalN: {
+    top: -9,
+    color: '#ef4444',
+  },
+  cardinalE: {
+    right: -7,
+    top: 36,
+  },
+  cardinalS: {
+    bottom: -9,
+  },
+  cardinalW: {
+    left: -7,
+    top: 36,
+  },
+  northPointer: {
+    position: 'absolute',
+    width: 4,
+    height: 14,
+    backgroundColor: '#ef4444',
+    top: 12,
+    borderRadius: 2,
   },
   targetNeedle: {
     position: 'absolute',
-    width: 4,
-    height: 16,
+    width: 3,
+    height: 28,
     backgroundColor: '#38bdf8',
-    top: 14,
-  },
-  compassN: {
-    position: 'absolute',
-    top: 2,
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '700',
+    top: 31,
+    opacity: 0.9,
+    borderRadius: 2,
   },
   bottomStats: {
     backgroundColor: '#1f4f67',

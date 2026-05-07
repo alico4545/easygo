@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   Pressable,
   SafeAreaView,
@@ -152,11 +152,17 @@ function App() {
   const [selectedDestinationNearNodeId, setSelectedDestinationNearNodeId] = useState<string | null>(null);
   const [selectedDestinationOffsetMeters, setSelectedDestinationOffsetMeters] = useState(0);
   const [route, setRoute] = useState<RouteResult | null>(null);
+  const [deviationScore, setDeviationScore] = useState(0);
+  const [wrongDirectionStreak, setWrongDirectionStreak] = useState(0);
+  const [qrRecalibrationReason, setQrRecalibrationReason] = useState<string | null>(null);
 
   const [sensorSteps, setSensorSteps] = useState(0);
   const [routeProgressSteps, setRouteProgressSteps] = useState(0);
   const [floorPlans, setFloorPlans] = useState(getFloorPlanAssets());
   const [headingDeg, setHeadingDeg] = useState(0);
+  const headingRef = useRef(0);
+  const targetBearingRef = useRef<number | null>(null);
+  const promptedQrNodesRef = useRef<Set<string>>(new Set());
 
   const currentNode: BuildingNode | undefined = useMemo(
     () => KAT0_BUILDING_MAP.nodes.find(n => n.id === currentNodeId),
@@ -183,7 +189,23 @@ function App() {
         stepCounter = startStepCounter({
           onStep: () => {
             setSensorSteps(prev => prev + 1);
-            setRouteProgressSteps(prev => prev + 1);
+            const target = targetBearingRef.current;
+            if (target === null) {
+              setRouteProgressSteps(prev => prev + 1);
+              return;
+            }
+
+            const delta = Math.abs(angleDeltaSigned(headingRef.current, target));
+            const aligned = delta <= 65;
+
+            if (aligned) {
+              setRouteProgressSteps(prev => prev + 1);
+              setWrongDirectionStreak(0);
+              setDeviationScore(prev => Math.max(0, prev - 1));
+            } else {
+              setWrongDirectionStreak(prev => prev + 1);
+              setDeviationScore(prev => prev + 1);
+            }
           },
         });
       }
@@ -341,6 +363,10 @@ function App() {
         if (fixedBySequence) {
           setRoute(fixedBySequence);
           setRouteProgressSteps(0);
+          setDeviationScore(0);
+          setWrongDirectionStreak(0);
+          setQrRecalibrationReason(null);
+          promptedQrNodesRef.current.clear();
           return;
         }
       }
@@ -357,6 +383,10 @@ function App() {
 
       setRoute(result);
       setRouteProgressSteps(0);
+      setDeviationScore(0);
+      setWrongDirectionStreak(0);
+      setQrRecalibrationReason(null);
+      promptedQrNodesRef.current.clear();
     }
   }, [
     currentNodeId,
@@ -513,6 +543,46 @@ function App() {
     return bearingFromPixels(from, to);
   }, [activeRouteEdge, nodeCoordMap]);
 
+  useEffect(() => {
+    headingRef.current = headingDeg;
+  }, [headingDeg]);
+
+  useEffect(() => {
+    targetBearingRef.current = targetBearingDeg;
+  }, [targetBearingDeg]);
+
+  useEffect(() => {
+    if (!route) {
+      return;
+    }
+    if (deviationScore >= 6 || wrongDirectionStreak >= 4) {
+      setQrRecalibrationReason('Yon sapmasi algilandi. Lutfen en yakin QR noktasini okutun.');
+      setShowQRModal(true);
+      return;
+    }
+    const overflow = routeProgressSteps - route.totalSteps;
+    if (overflow >= 10) {
+      setQrRecalibrationReason('Beklenen adim asildi. Konum dogrulamasi gerekiyor.');
+      setShowQRModal(true);
+    }
+  }, [deviationScore, wrongDirectionStreak, route, routeProgressSteps]);
+
+  useEffect(() => {
+    if (!route || !activeRouteEdge) {
+      return;
+    }
+    const nextNodeId = activeRouteEdge.to;
+    if (!KAT0_QR_NODE_IDS.has(nextNodeId) || promptedQrNodesRef.current.has(nextNodeId)) {
+      return;
+    }
+    if (deviationScore < 3) {
+      return;
+    }
+    promptedQrNodesRef.current.add(nextNodeId);
+    setQrRecalibrationReason(`Kritik nokta ${nextNodeId} yaklasiliyor. QR ile dogrulama onerilir.`);
+    setShowQRModal(true);
+  }, [activeRouteEdge, route, deviationScore]);
+
   const facingHint = useMemo(() => {
     if (targetBearingDeg === null) {
       return 'Hedefe ulasildi veya bearing hesaplanamadi.';
@@ -543,7 +613,20 @@ function App() {
         onBack={() => setActiveScreen('home')}
         onManualStep={() => {
           setSensorSteps(prev => prev + 1);
-          setRouteProgressSteps(prev => prev + 1);
+          const target = targetBearingRef.current;
+          if (target === null) {
+            setRouteProgressSteps(prev => prev + 1);
+            return;
+          }
+          const delta = Math.abs(angleDeltaSigned(headingRef.current, target));
+          if (delta <= 65) {
+            setRouteProgressSteps(prev => prev + 1);
+            setWrongDirectionStreak(0);
+            setDeviationScore(prev => Math.max(0, prev - 1));
+          } else {
+            setWrongDirectionStreak(prev => prev + 1);
+            setDeviationScore(prev => prev + 1);
+          }
         }}
       />
     );
@@ -563,6 +646,9 @@ function App() {
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>1) Başlangıç Noktası</Text>
+          {!!qrRecalibrationReason && (
+            <Text style={styles.warning}>QR Uyarisi: {qrRecalibrationReason}</Text>
+          )}
           <Text style={styles.value}>
             {currentNode ? `${currentNode.name} (Kat ${currentNode.floor})` : 'Henüz QR okutulmadı'}
           </Text>
@@ -629,11 +715,16 @@ function App() {
           <Text style={styles.sectionTitle}>3) Adım Takibi (Sensör)</Text>
           <Text style={styles.value}>Sensörden okunan adım: {sensorSteps}</Text>
           <Text style={styles.value}>Rota boyunca adım: {routeProgressSteps}</Text>
+          <Text style={styles.value}>Ters yon serisi: {wrongDirectionStreak}</Text>
+          <Text style={styles.value}>Sapma skoru: {deviationScore}</Text>
           <Pressable
             style={[styles.button, styles.secondaryButton]}
             onPress={() => {
               setSensorSteps(0);
               setRouteProgressSteps(0);
+              setWrongDirectionStreak(0);
+              setDeviationScore(0);
+              setQrRecalibrationReason(null);
             }}>
             <Text style={styles.secondaryButtonText}>Adımları Sıfırla</Text>
           </Pressable>
@@ -673,6 +764,9 @@ function App() {
         nodes={qrStartOptions}
         onSelectNode={id => {
           setCurrentNodeId(id);
+          setDeviationScore(0);
+          setWrongDirectionStreak(0);
+          setQrRecalibrationReason(null);
           setShowQRModal(false);
         }}
       />
