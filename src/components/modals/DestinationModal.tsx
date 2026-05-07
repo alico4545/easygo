@@ -1,11 +1,16 @@
 import React from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {BuildingNode} from '../../types/navigation';
+import {Pressable, ScrollView, StyleSheet, Text} from 'react-native';
 import {BaseModal} from '../common/BaseModal';
+
+type DestinationItem = {
+  id: string;
+  name: string;
+  floor: number;
+};
 
 type DestinationModalProps = {
   visible: boolean;
-  destinations: BuildingNode[];
+  destinations: DestinationItem[];
   onClose: () => void;
   onSelectDestination: (id: string) => void;
 };
@@ -18,7 +23,7 @@ export function DestinationModal({
 }: DestinationModalProps) {
   return (
     <BaseModal visible={visible} title="Hedef Seç" onClose={onClose}>
-      <View style={styles.list}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.list}>
         {destinations.map(item => (
           <Pressable
             key={item.id}
@@ -28,13 +33,14 @@ export function DestinationModal({
             <Text style={styles.sub}>Kat: {item.floor}</Text>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
     </BaseModal>
   );
 }
 
 const styles = StyleSheet.create({
-  list: {gap: 8},
+  list: {gap: 8, paddingBottom: 4},
+  scroll: {maxHeight: 320},
   item: {
     borderWidth: 1,
     borderColor: '#dbe4ef',

@@ -17,10 +17,16 @@ jest.mock('react-native-permissions', () => ({
 }));
 
 jest.mock('react-native-sensors', () => ({
-  SensorTypes: {accelerometer: 'accelerometer'},
+  SensorTypes: {accelerometer: 'accelerometer', magnetometer: 'magnetometer'},
   setUpdateIntervalForType: jest.fn(),
   accelerometer: {
     subscribe: jest.fn(() => ({unsubscribe: jest.fn()})),
+  },
+  magnetometer: {
+    subscribe: jest.fn(cb => {
+      cb({x: 0, y: 1, z: 0});
+      return {unsubscribe: jest.fn()};
+    }),
   },
 }));
 

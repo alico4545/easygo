@@ -14,7 +14,12 @@ import {
   PermissionModal,
   QRStartModal,
 } from './src/components';
-import {KAT0_BUILDING_MAP, KAT0_DATASET, KAT0_DESTINATION_IDS} from './src/data/floorplans';
+import {
+  KAT0_BUILDING_MAP,
+  KAT0_DATASET,
+  KAT0_DESTINATION_IDS,
+  KAT0_QR_NODE_IDS,
+} from './src/data/floorplans';
 import {findShortestRoute} from './src/services/pathfinding';
 import {
   checkCorePermissions,
@@ -22,11 +27,27 @@ import {
   requestCorePermissions,
 } from './src/services/permissions';
 import {addManualFloorPlanAsset, getFloorPlanAssets} from './src/services/floorPlanRegistry';
+import {
+  angleDeltaSigned,
+  bearingFromPixels,
+  bearingToCardinal,
+  startCompass,
+  turnInstruction,
+} from './src/services/compass';
 import {startStepCounter, StepCounterHandle} from './src/services/stepCounter';
 import {NavigationSessionScreen} from './src/screens';
 import {BuildingNode, RouteResult} from './src/types/navigation';
 
 function App() {
+  type DestinationOption = {
+    id: string;
+    name: string;
+    floor: number;
+    targetNodeId: string;
+    nearNodeId: string;
+    offsetMeters: number;
+  };
+
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [showDestinationModal, setShowDestinationModal] = useState(false);
@@ -36,21 +57,27 @@ function App() {
   const [permissionsReady, setPermissionsReady] = useState(false);
   const [currentNodeId, setCurrentNodeId] = useState<string | null>(null);
   const [destinationNodeId, setDestinationNodeId] = useState<string | null>(null);
+  const [selectedDestinationLabel, setSelectedDestinationLabel] = useState<string | null>(null);
+  const [selectedDestinationNearNodeId, setSelectedDestinationNearNodeId] = useState<string | null>(null);
+  const [selectedDestinationOffsetMeters, setSelectedDestinationOffsetMeters] = useState(0);
   const [route, setRoute] = useState<RouteResult | null>(null);
 
   const [sensorSteps, setSensorSteps] = useState(0);
   const [routeProgressSteps, setRouteProgressSteps] = useState(0);
   const [floorPlans, setFloorPlans] = useState(getFloorPlanAssets());
+  const [headingDeg, setHeadingDeg] = useState(0);
 
   const currentNode: BuildingNode | undefined = useMemo(
     () => KAT0_BUILDING_MAP.nodes.find(n => n.id === currentNodeId),
     [currentNodeId],
   );
 
-  const destinationNode: BuildingNode | undefined = useMemo(
-    () => KAT0_BUILDING_MAP.nodes.find(n => n.id === destinationNodeId),
-    [destinationNodeId],
-  );
+  const destinationNode: BuildingNode | undefined = useMemo(() => {
+    if (!destinationNodeId) {
+      return undefined;
+    }
+    return KAT0_BUILDING_MAP.nodes.find(n => n.id === destinationNodeId);
+  }, [destinationNodeId]);
 
   useEffect(() => {
     let stepCounter: StepCounterHandle | null = null;
@@ -77,6 +104,20 @@ function App() {
       stepCounter?.stop();
     };
   }, []);
+
+  useEffect(() => {
+    if (!permissionsReady) {
+      return;
+    }
+
+    const compass = startCompass({
+      onHeading: setHeadingDeg,
+    });
+
+    return () => {
+      compass.stop();
+    };
+  }, [permissionsReady]);
 
   useEffect(() => {
     if (currentNodeId && destinationNodeId) {
@@ -110,15 +151,140 @@ function App() {
     return route.steps.length - 1;
   }, [route, routeProgressSteps]);
 
-  const destinationOptions = KAT0_BUILDING_MAP.nodes.filter(node =>
-    KAT0_DESTINATION_IDS.has(node.id),
+  const destinationOptions = useMemo<DestinationOption[]>(() => {
+    const nodeDestinations = KAT0_BUILDING_MAP.nodes
+      .filter(node => KAT0_DESTINATION_IDS.has(node.id))
+      .map(node => ({
+        id: node.id,
+        name: node.name,
+        floor: node.floor,
+        targetNodeId: node.id,
+        nearNodeId: node.id,
+        offsetMeters: 0,
+      }));
+
+    const poiDestinations = KAT0_DATASET.pois.map(poi => ({
+      id: poi.id,
+      name: poi.name,
+      floor: poi.floor,
+      targetNodeId: poi.nearNodeId,
+      nearNodeId: poi.nearNodeId,
+      offsetMeters: poi.offsetMeters,
+    }));
+
+    return [...nodeDestinations, ...poiDestinations];
+  }, []);
+  const qrStartOptions = KAT0_BUILDING_MAP.nodes.filter(node =>
+    KAT0_QR_NODE_IDS.has(node.id),
   );
+
+  const nodeCoordMap = useMemo(() => {
+    return KAT0_DATASET.nodes.reduce<Record<string, {xPx: number; yPx: number}>>((acc, node) => {
+      acc[node.id] = {xPx: node.xPx, yPx: node.yPx};
+      return acc;
+    }, {});
+  }, []);
+
+  const activeRouteEdge = useMemo(() => {
+    if (!route || route.steps.length === 0) {
+      return null;
+    }
+
+    let cumulative = 0;
+    for (let i = 0; i < route.steps.length; i += 1) {
+      cumulative += route.steps[i].steps;
+      if (routeProgressSteps < cumulative) {
+        return route.steps[i];
+      }
+    }
+    return route.steps[route.steps.length - 1];
+  }, [route, routeProgressSteps]);
+
+  const activeEdgeIndex = useMemo(() => {
+    if (!route || route.steps.length === 0) {
+      return -1;
+    }
+    let cumulative = 0;
+    for (let i = 0; i < route.steps.length; i += 1) {
+      cumulative += route.steps[i].steps;
+      if (routeProgressSteps < cumulative) {
+        return i;
+      }
+    }
+    return route.steps.length - 1;
+  }, [route, routeProgressSteps]);
+
+  const pinPosition = useMemo(() => {
+    if (!route || route.steps.length === 0) {
+      if (!currentNodeId) {
+        return null;
+      }
+      return nodeCoordMap[currentNodeId] ?? null;
+    }
+
+    const idx = activeEdgeIndex;
+    if (idx < 0) {
+      return null;
+    }
+
+    const edge = route.steps[idx];
+    const from = nodeCoordMap[edge.from];
+    const to = nodeCoordMap[edge.to];
+    if (!from || !to) {
+      return null;
+    }
+
+    const prevSteps = route.steps
+      .slice(0, idx)
+      .reduce((sum, step) => sum + step.steps, 0);
+    const within = Math.max(routeProgressSteps - prevSteps, 0);
+    const t = edge.steps > 0 ? Math.min(within / edge.steps, 1) : 1;
+
+    return {
+      xPx: from.xPx + (to.xPx - from.xPx) * t,
+      yPx: from.yPx + (to.yPx - from.yPx) * t,
+    };
+  }, [route, activeEdgeIndex, routeProgressSteps, nodeCoordMap, currentNodeId]);
+
+  const targetBearingDeg = useMemo(() => {
+    if (!activeRouteEdge) {
+      return null;
+    }
+    const from = nodeCoordMap[activeRouteEdge.from];
+    const to = nodeCoordMap[activeRouteEdge.to];
+    if (!from || !to) {
+      return null;
+    }
+    return bearingFromPixels(from, to);
+  }, [activeRouteEdge, nodeCoordMap]);
+
+  const facingHint = useMemo(() => {
+    if (targetBearingDeg === null) {
+      return 'Hedefe ulasildi veya bearing hesaplanamadi.';
+    }
+    const delta = angleDeltaSigned(headingDeg, targetBearingDeg);
+    const targetCardinal = bearingToCardinal(targetBearingDeg);
+    const turn = turnInstruction(delta);
+    return `${turn} • ${targetCardinal} yonune ilerle`;
+  }, [headingDeg, targetBearingDeg]);
+
+  const targetCardinal = useMemo(() => {
+    if (targetBearingDeg === null) {
+      return '-';
+    }
+    return bearingToCardinal(targetBearingDeg);
+  }, [targetBearingDeg]);
 
   if (activeScreen === 'navigation' && route) {
     return (
       <NavigationSessionScreen
         route={route}
         progressSteps={routeProgressSteps}
+        headingDeg={headingDeg}
+        targetBearingDeg={targetBearingDeg}
+        facingHint={facingHint}
+        targetCardinal={targetCardinal}
+        pinPosition={pinPosition}
         onBack={() => setActiveScreen('home')}
         onManualStep={() => {
           setSensorSteps(prev => prev + 1);
@@ -157,7 +323,7 @@ function App() {
           <Text style={styles.sectionTitle}>2) Hedef ve Rota</Text>
           <Text style={styles.value}>
             {destinationNode
-              ? `${destinationNode.name} (Kat ${destinationNode.floor})`
+              ? `${selectedDestinationLabel ?? destinationNode.name} (Kat ${destinationNode.floor})`
               : 'Hedef seçilmedi'}
           </Text>
           <Pressable style={styles.button} onPress={() => setShowDestinationModal(true)}>
@@ -169,6 +335,22 @@ function App() {
               ? `Toplam tahmini: ${route.totalSteps} adım`
               : 'Rota için başlangıç ve hedef seçin'}
           </Text>
+          {!!route && (
+            <Text style={styles.routeNodes}>
+              Dugum sirasi: {route.nodes.map(n => n.id).join(' -> ')}
+            </Text>
+          )}
+          {!!route && selectedDestinationNearNodeId && (
+            <Text style={styles.routeNodes}>
+              Kontrol noktasi: {selectedDestinationNearNodeId}
+              {selectedDestinationOffsetMeters > 0
+                ? ` -> Hedef son ${selectedDestinationOffsetMeters.toFixed(1)} m (~${Math.max(
+                    1,
+                    Math.round(selectedDestinationOffsetMeters / 0.72),
+                  )} adim)`
+                : ' (hedef node)'}
+            </Text>
+          )}
 
           {!!route &&
             route.steps.map((step, index) => (
@@ -233,7 +415,7 @@ function App() {
       <QRStartModal
         visible={showQRModal}
         onClose={() => setShowQRModal(false)}
-        nodes={KAT0_BUILDING_MAP.nodes}
+        nodes={qrStartOptions}
         onSelectNode={id => {
           setCurrentNodeId(id);
           setShowQRModal(false);
@@ -243,9 +425,20 @@ function App() {
       <DestinationModal
         visible={showDestinationModal}
         onClose={() => setShowDestinationModal(false)}
-        destinations={destinationOptions}
+        destinations={destinationOptions.map(item => ({
+          id: item.id,
+          name: item.name,
+          floor: item.floor,
+        }))}
         onSelectDestination={id => {
-          setDestinationNodeId(id);
+          const selected = destinationOptions.find(item => item.id === id);
+          if (!selected) {
+            return;
+          }
+          setDestinationNodeId(selected.targetNodeId);
+          setSelectedDestinationLabel(selected.name);
+          setSelectedDestinationNearNodeId(selected.nearNodeId);
+          setSelectedDestinationOffsetMeters(selected.offsetMeters);
           setShowDestinationModal(false);
         }}
       />
@@ -316,6 +509,10 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontSize: 13,
     marginTop: 4,
+  },
+  routeNodes: {
+    color: '#475569',
+    fontSize: 12,
   },
   routeStep: {
     borderWidth: 1,

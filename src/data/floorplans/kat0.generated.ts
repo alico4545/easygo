@@ -4,7 +4,7 @@ export type FloorNode = {
   floor: number;
   xPx: number;
   yPx: number;
-  qrPayload: string;
+  qrPayload: string | null;
   note?: string;
 };
 
@@ -14,6 +14,14 @@ export type FloorEdge = {
   meters: number;
   corridor: string;
   instruction: string;
+};
+
+export type FloorPoi = {
+  id: string;
+  name: string;
+  floor: number;
+  nearNodeId: string;
+  offsetMeters: number;
 };
 
 export type FloorPlanDataset = {
@@ -28,6 +36,7 @@ export type FloorPlanDataset = {
   assumptions: string[];
   nodes: FloorNode[];
   edges: FloorEdge[];
+  pois: FloorPoi[];
 };
 
 const BUILDING_ID = 'okul-a';
@@ -37,108 +46,61 @@ const qr = (nodeId: string, floor: number) => `EG|${BUILDING_ID}|F${floor}|${nod
 export const KAT0_DATASET: FloorPlanDataset = {
   buildingId: BUILDING_ID,
   floor: 0,
-  mapImage: 'kat0.png',
+  mapImage: 'kat0_olcekli.png',
   scale: {
     pixelsPerMeter: 50,
     metersPerPixel: 1 / 50,
-    source: 'Plan üzerinde belirtilen: OLCEK 1 METRE = 50 PIXEL',
+    source: 'Plan uzerindeki olcek: 1 metre = 50 piksel',
   },
   assumptions: [
-    'Node koordinatlari piksel olarak plandan yaklasik alinmistir.',
-    'Edge mesafeleri node merkezleri arasi yurunebilir yol uzunluguna gore yaklasik hesaplanmistir.',
-    'Saha olcumu ile duzeltme onerilir (ozellikle kose donuslerinde).',
+    'Yeni krokiye gore sadece kritik noktalarda QR vardir.',
+    'Kritik QR node seti: N1, N2, N3, N4, N5, N9, N10.',
+    'N6, N7, N8 kapi hedef noktalaridir (node/poi, ancak QR zorunlu degil).',
+    'Bu surumde temel omurga mesafeleri kullanicinin verdigi olculere gore guncellenmistir.',
+    'N4-N5-N10 bolgesi kat1 degil, kat0 icindeki yukseltili blok olarak modellenmistir.',
   ],
   nodes: [
-    {id: 'N1', name: 'Ana Giris', floor: 0, xPx: 880, yPx: 145, qrPayload: qr('N1', 0)},
-    {id: 'N2', name: 'Koridor Sol Kavsak', floor: 0, xPx: 300, yPx: 420, qrPayload: qr('N2', 0)},
-    {id: 'N3', name: 'Koridor Sag Kavsak', floor: 0, xPx: 860, yPx: 420, qrPayload: qr('N3', 0)},
-    {id: 'N4', name: 'Merdiven Alt/Ust', floor: 0, xPx: 830, yPx: 585, qrPayload: qr('N4', 0), note: 'Kat gecis dogrulama noktasi'},
-    {id: 'N5', name: 'Koridor Asagi Donus', floor: 0, xPx: 780, yPx: 760, qrPayload: qr('N5', 0)},
-    {id: 'N6', name: 'WC Erkek Kapisi', floor: 0, xPx: 650, yPx: 640, qrPayload: qr('N6', 0)},
-    {id: 'N7A', name: 'Laboratuvar Kapisi Sol', floor: 0, xPx: 170, yPx: 610, qrPayload: qr('N7A', 0)},
-    {id: 'N7B', name: 'Laboratuvar Kapisi Sag', floor: 0, xPx: 520, yPx: 610, qrPayload: qr('N7B', 0)},
-    {id: 'N8', name: 'Sef Odasi Kapisi', floor: 0, xPx: 335, yPx: 640, qrPayload: qr('N8', 0)},
-    {id: 'N9', name: 'WC Erkek Sol Uc Kapisi', floor: 0, xPx: 80, yPx: 350, qrPayload: qr('N9', 0)},
-    {id: 'N10', name: 'Arka Cikis Kapisi', floor: 0, xPx: 780, yPx: 1090, qrPayload: qr('N10', 0)},
+    {id: 'N1', name: 'Ana Giris', floor: 0, xPx: 2388, yPx: 249, qrPayload: qr('N1', 0), note: 'Esikten bina icine dogu yonunde 2 adim kalibrasyon'},
+    {id: 'N2', name: 'Koridor Sol Kavsak', floor: 0, xPx: 1500, yPx: 890, qrPayload: qr('N2', 0)},
+    {id: 'N3', name: 'Koridor Sag Kavsak', floor: 0, xPx: 2430, yPx: 855, qrPayload: qr('N3', 0), note: 'Spor kapisi onunden bati yonune 2 adim, kavsak merkezine alinmis kalibrasyon (ince ayar +20px sag, +5px asagi)'},
+    {id: 'N4', name: 'Merdiven Alt/Ust', floor: 0, xPx: 2170, yPx: 1200, qrPayload: qr('N4', 0), note: 'Kat gecis dogrulamasi'},
+    {id: 'N5', name: 'Koridor Asagi Donus', floor: 0, xPx: 2250, yPx: 1750, qrPayload: qr('N5', 0)},
+    {id: 'N6', name: 'WC Erkek Kapisi', floor: 0, xPx: 1872, yPx: 890, qrPayload: null, note: 'N3 kalibrasyon trendiyle hizalandi'},
+    {id: 'N7', name: 'Laboratuvar Kapisi', floor: 0, xPx: 1335, yPx: 890, qrPayload: null, note: 'N3 kalibrasyon trendiyle hizalandi'},
+    {id: 'N8', name: 'Sef Odasi Kapisi', floor: 0, xPx: 900, yPx: 890, qrPayload: null, note: 'N3 kalibrasyon trendiyle hizalandi'},
+    {id: 'N9', name: 'Koridor Cikis Sol Uc', floor: 0, xPx: 100, yPx: 890, qrPayload: qr('N9', 0)},
+    {id: 'N10', name: 'Arka Cikis Kapisi', floor: 0, xPx: 2210, yPx: 2150, qrPayload: qr('N10', 0)},
   ],
   edges: [
-    {
-      from: 'N1',
-      to: 'N3',
-      meters: 5.6,
-      corridor: 'Sag dikey koridor',
-      instruction: 'Ana giristen duz ilerleyin ve sag kavsaga ulasin.',
-    },
-    {
-      from: 'N3',
-      to: 'N2',
-      meters: 11.2,
-      corridor: 'Ust yatay koridor',
-      instruction: 'Koridor boyunca sola devam edin.',
-    },
-    {
-      from: 'N2',
-      to: 'N9',
-      meters: 4.4,
-      corridor: 'Sol ust koridor',
-      instruction: 'Sol uca ilerleyin.',
-    },
-    {
-      from: 'N3',
-      to: 'N4',
-      meters: 3.3,
-      corridor: 'Merdiven oncesi baglanti',
-      instruction: 'Merdiven noktasina ilerleyin.',
-    },
-    {
-      from: 'N4',
-      to: 'N5',
-      meters: 3.6,
-      corridor: 'Dikey baglanti',
-      instruction: 'Asagi koridora inin.',
-    },
-    {
-      from: 'N5',
-      to: 'N10',
-      meters: 6.6,
-      corridor: 'Arka cikis koridoru',
-      instruction: 'Duz gidip arka cikisa ulasin.',
-    },
-    {
-      from: 'N5',
-      to: 'N6',
-      meters: 3.5,
-      corridor: 'Alt yatay koridor',
-      instruction: 'Sola donerek WC erkek kapisina ilerleyin.',
-    },
-    {
-      from: 'N6',
-      to: 'N7B',
-      meters: 2.6,
-      corridor: 'Alt yatay koridor',
-      instruction: 'Sola devam edin, laboratuvar kapisina ulasin.',
-    },
-    {
-      from: 'N7B',
-      to: 'N8',
-      meters: 3.7,
-      corridor: 'Alt yatay koridor',
-      instruction: 'Sef odasi kapisina kadar ilerleyin.',
-    },
-    {
-      from: 'N8',
-      to: 'N7A',
-      meters: 3.3,
-      corridor: 'Alt yatay koridor',
-      instruction: 'Koridor soluna ilerleyin.',
-    },
-    {
-      from: 'N6',
-      to: 'N2',
-      meters: 5.0,
-      corridor: 'Iceri baglanti',
-      instruction: 'Ust koridora baglanan gecise ilerleyin.',
-    },
+    {from: 'N1', to: 'N3', meters: 5.2, corridor: 'Dikey giris koridoru', instruction: 'Guney yonunde duz ilerleyin.'},
+    {from: 'N3', to: 'N2', meters: 15.54, corridor: 'Ust ana koridor', instruction: 'Sola donup ana koridora girin.'},
+    {from: 'N2', to: 'N9', meters: 17.96, corridor: 'Ust koridor sol kol', instruction: 'Koridorun sol ucuna ilerleyin.'},
+    {from: 'N3', to: 'N4', meters: 4.0, corridor: 'Merdiven baglantisi', instruction: 'Merdiven bolgesine inin.'},
+    {from: 'N3', to: 'N6', meters: 6.2, corridor: 'Sag-alt koridor baglantisi', instruction: 'Merdivenleri gecmeden sola yonelip WC Erkek kapisi hattina ilerleyin.'},
+    {from: 'N4', to: 'N5', meters: 7.0, corridor: 'Yukselti gecisi', instruction: 'Yukseltili bloka gecip koridor donusune ulasin.'},
+    {from: 'N5', to: 'N10', meters: 14.7, corridor: 'Arka cikis koridoru', instruction: 'Arka cikisa dogru duz ilerleyin.'},
+    {from: 'N2', to: 'N8', meters: 3.9, corridor: 'Orta gecis', instruction: 'Orta gecisten Sef Odasi kapisina inin.'},
+    {from: 'N8', to: 'N7', meters: 3.5, corridor: 'Alt yatay koridor', instruction: 'Saga ilerleyip Laboratuvar kapisina gidin.'},
+    {from: 'N7', to: 'N6', meters: 3.2, corridor: 'Alt yatay koridor', instruction: 'WC Erkek kapisina dogru devam edin.'},
+  ],
+  pois: [
+    {id: 'P01', name: 'Rehberlik Odasi', floor: 0, nearNodeId: 'N1', offsetMeters: 1.1},
+    {id: 'P02', name: 'Mudur Yardimcisi Odasi 1', floor: 0, nearNodeId: 'N1', offsetMeters: 2.2},
+    {id: 'P03', name: 'Ogretmenler Odasi', floor: 0, nearNodeId: 'N2', offsetMeters: 1.9},
+    {id: 'P04', name: 'Depo', floor: 0, nearNodeId: 'N2', offsetMeters: 1.0},
+    {id: 'P05', name: 'Kutuphane', floor: 0, nearNodeId: 'N9', offsetMeters: 1.1},
+    {id: 'P06', name: 'WC Kadin', floor: 0, nearNodeId: 'N9', offsetMeters: 0.8},
+    {id: 'P07', name: 'Spor Odasi', floor: 0, nearNodeId: 'N3', offsetMeters: 1.0},
+    {id: 'P08', name: 'Laboratuvar 1', floor: 0, nearNodeId: 'N7', offsetMeters: 0.9},
+    {id: 'P09', name: 'Laboratuvar 2', floor: 0, nearNodeId: 'N8', offsetMeters: 1.2},
+    {id: 'P10', name: 'Bilisim Sef Odasi', floor: 0, nearNodeId: 'N8', offsetMeters: 0.7},
+    {id: 'P11', name: 'WC Erkek', floor: 0, nearNodeId: 'N6', offsetMeters: 0.6},
+    {id: 'P12', name: 'Mudur Yardimcisi Odasi 2', floor: 0, nearNodeId: 'N5', offsetMeters: 1.0},
+    {id: 'P13', name: 'Mudur Yardimcisi Odasi 3', floor: 0, nearNodeId: 'N5', offsetMeters: 2.0},
+    {id: 'P14', name: 'Hizmetli Odasi (Sol)', floor: 0, nearNodeId: 'N10', offsetMeters: 1.1},
+    {id: 'P15', name: 'Mudur Odasi', floor: 0, nearNodeId: 'N5', offsetMeters: 1.2},
+    {id: 'P16', name: 'Mudur Yardimcisi Odasi 4', floor: 0, nearNodeId: 'N10', offsetMeters: 1.8},
+    {id: 'P17', name: 'Hizmetli Odasi (Sag - Eski Cay Ocagi)', floor: 0, nearNodeId: 'N10', offsetMeters: 0.9},
   ],
 };
 

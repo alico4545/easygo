@@ -1,5 +1,5 @@
 import React from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {Pressable, ScrollView, StyleSheet, Text} from 'react-native';
 import {BuildingNode} from '../../types/navigation';
 import {BaseModal} from '../common/BaseModal';
 
@@ -21,7 +21,7 @@ export function QRStartModal({
       <Text style={styles.desc}>
         Demo için QR içeriğini simüle ediyoruz. Gerçekte kamera ile QR okutulacak.
       </Text>
-      <View style={styles.list}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.list}>
         {nodes.map(node => (
           <Pressable
             key={node.id}
@@ -31,7 +31,7 @@ export function QRStartModal({
             <Text style={styles.itemSubtitle}>Kat {node.floor}</Text>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
     </BaseModal>
   );
 }
@@ -44,6 +44,10 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 8,
+    paddingBottom: 4,
+  },
+  scroll: {
+    maxHeight: 320,
   },
   item: {
     borderWidth: 1,
