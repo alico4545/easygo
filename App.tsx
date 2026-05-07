@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   Pressable,
   SafeAreaView,
@@ -38,6 +38,91 @@ import {startStepCounter, StepCounterHandle} from './src/services/stepCounter';
 import {NavigationSessionScreen} from './src/screens';
 import {BuildingNode, RouteResult} from './src/types/navigation';
 
+const buildRouteViaCheckpoints = (
+  startNodeId: string,
+  targetNodeId: string,
+  checkpoints: string[],
+): RouteResult | null => {
+  const sequence = [startNodeId, ...checkpoints, targetNodeId].filter(
+    (id, index, arr) => index === 0 || id !== arr[index - 1],
+  );
+
+  let mergedNodes: BuildingNode[] = [];
+  let mergedSteps: RouteResult['steps'] = [];
+
+  for (let i = 0; i < sequence.length - 1; i += 1) {
+    const segment = findShortestRoute(KAT0_BUILDING_MAP, sequence[i], sequence[i + 1]);
+    if (!segment) {
+      return null;
+    }
+
+    if (mergedNodes.length === 0) {
+      mergedNodes = [...segment.nodes];
+    } else {
+      mergedNodes.push(...segment.nodes.slice(1));
+    }
+    mergedSteps.push(...segment.steps);
+  }
+
+  return {
+    nodes: mergedNodes,
+    steps: mergedSteps,
+    totalSteps: mergedSteps.reduce((sum, step) => sum + step.steps, 0),
+  };
+};
+
+const getRearCorridorPolicyCheckpoints = (
+  startNodeId: string,
+  targetNodeId: string,
+): string[] | null => {
+  if (startNodeId !== 'N10' && startNodeId !== 'N5') {
+    return null;
+  }
+
+  const base: string[] = startNodeId === 'N10' ? ['N5'] : [];
+
+  if (targetNodeId === 'N10' || targetNodeId === 'N5') {
+    return base;
+  }
+
+  if (targetNodeId === 'N6') {
+    return [...base, 'N6'];
+  }
+  if (targetNodeId === 'N7') {
+    return [...base, 'N6', 'N7'];
+  }
+  if (targetNodeId === 'N8') {
+    return [...base, 'N6', 'N7', 'N8'];
+  }
+  if (targetNodeId === 'N2') {
+    return [...base, 'N6', 'N7', 'N8', 'N2'];
+  }
+  if (targetNodeId === 'N12') {
+    return [...base, 'N6', 'N7', 'N8', 'N2', 'N12'];
+  }
+  if (targetNodeId === 'N11') {
+    return [...base, 'N6', 'N7', 'N8', 'N2', 'N12', 'N11'];
+  }
+  if (targetNodeId === 'N9') {
+    return [...base, 'N6', 'N7', 'N8', 'N2', 'N12', 'N11', 'N9'];
+  }
+  if (targetNodeId === 'N13') {
+    return [...base, 'N6', 'N7', 'N8', 'N2', 'N13'];
+  }
+
+  if (targetNodeId === 'N4') {
+    return [...base, 'N4'];
+  }
+  if (targetNodeId === 'N3') {
+    return [...base, 'N4', 'N3'];
+  }
+  if (targetNodeId === 'N1') {
+    return [...base, 'N4', 'N3', 'N1'];
+  }
+
+  return [...base, 'N6'];
+};
+
 function App() {
   type DestinationOption = {
     id: string;
@@ -57,6 +142,7 @@ function App() {
   const [permissionsReady, setPermissionsReady] = useState(false);
   const [currentNodeId, setCurrentNodeId] = useState<string | null>(null);
   const [destinationNodeId, setDestinationNodeId] = useState<string | null>(null);
+  const [destinationOptionId, setDestinationOptionId] = useState<string | null>(null);
   const [selectedDestinationLabel, setSelectedDestinationLabel] = useState<string | null>(null);
   const [selectedDestinationNearNodeId, setSelectedDestinationNearNodeId] = useState<string | null>(null);
   const [selectedDestinationOffsetMeters, setSelectedDestinationOffsetMeters] = useState(0);
@@ -119,13 +205,161 @@ function App() {
     };
   }, [permissionsReady]);
 
+  const buildRouteFromNodeSequence = useCallback((sequence: string[]): RouteResult | null => {
+    const nodesById = KAT0_BUILDING_MAP.nodes.reduce<Record<string, BuildingNode>>(
+      (acc, node) => {
+        acc[node.id] = node;
+        return acc;
+      },
+      {},
+    );
+    const edgesByKey = KAT0_BUILDING_MAP.edges.reduce<
+      Record<string, {from: string; to: string; steps: number; instruction: string}>
+    >((acc, edge) => {
+      acc[`${edge.from}->${edge.to}`] = edge;
+      acc[`${edge.to}->${edge.from}`] = {
+        from: edge.to,
+        to: edge.from,
+        steps: edge.steps,
+        instruction: edge.instruction,
+      };
+      return acc;
+    }, {});
+
+    const routeSteps: RouteResult['steps'] = [];
+    for (let i = 0; i < sequence.length - 1; i += 1) {
+      const edge = edgesByKey[`${sequence[i]}->${sequence[i + 1]}`];
+      if (!edge) {
+        return null;
+      }
+      routeSteps.push(edge);
+    }
+
+    const routeNodes = sequence.map(id => nodesById[id]).filter(Boolean);
+    if (routeNodes.length !== sequence.length) {
+      return null;
+    }
+
+    return {
+      nodes: routeNodes,
+      steps: routeSteps,
+      totalSteps: routeSteps.reduce((sum, step) => sum + step.steps, 0),
+    };
+  }, []);
+
+  const getFixedRouteSequence = useCallback(
+    (
+      startNodeId: string,
+      optionId: string | null,
+      targetNodeId: string,
+    ): string[] | null => {
+      if (!optionId) {
+        return null;
+      }
+
+      const fixedByStartAndOption: Record<string, string[]> = {
+        // N10 (arka cikis) -> sabit hedef dizileri
+        'N10|P01': ['N10', 'N5', 'N4', 'N3', 'N1'], // Rehberlik
+        'N10|P02': ['N10', 'N5', 'N4', 'N3'], // Mudur Yrd 1
+        'N10|P03': ['N10', 'N5', 'N6', 'N13'], // Ogretmenler (N2'ye ugramadan)
+        'N10|P04': ['N10', 'N5', 'N6', 'N12'], // Depo
+        'N10|P05': ['N10', 'N5', 'N6', 'N12', 'N11'], // Kutuphane
+        'N10|P06': ['N10', 'N5', 'N6', 'N12', 'N11', 'N9'], // WC Kadin
+        'N10|P07': ['N10', 'N5', 'N4', 'N3'], // Spor
+        'N10|P08': ['N10', 'N5', 'N6', 'N7'], // Lab 1
+        'N10|P09': ['N10', 'N5', 'N6', 'N7', 'N8'], // Lab 2
+        'N10|P10': ['N10', 'N5', 'N6', 'N7', 'N8'], // Sef
+        'N10|P11': ['N10', 'N5', 'N6'], // WC Erkek
+        'N10|P12': ['N10', 'N5'], // Mudur Yrd 2
+        'N10|P13': ['N10', 'N5'], // Mudur Yrd 3
+        'N10|P14': ['N10'], // Hizmetli Sol
+        'N10|P15': ['N10', 'N5'], // Mudur Odasi
+        'N10|P16': ['N10'], // Mudur Yrd 4
+        'N10|P17': ['N10'], // Hizmetli Sag
+
+        // N1 (ana giris) -> sabit hedef dizileri
+        'N1|P01': ['N1'],
+        'N1|P02': ['N1', 'N3'],
+        'N1|P03': ['N1', 'N3', 'N13'],
+        'N1|P04': ['N1', 'N3', 'N6', 'N12'],
+        'N1|P05': ['N1', 'N3', 'N6', 'N12', 'N11'],
+        'N1|P06': ['N1', 'N3', 'N6', 'N12', 'N11', 'N9'],
+        'N1|P07': ['N1', 'N3'],
+        'N1|P08': ['N1', 'N3', 'N6', 'N7'],
+        'N1|P09': ['N1', 'N3', 'N6', 'N7', 'N8'],
+        'N1|P10': ['N1', 'N3', 'N6', 'N7', 'N8'],
+        'N1|P11': ['N1', 'N3', 'N6'],
+        'N1|P12': ['N1', 'N3', 'N4', 'N5'],
+        'N1|P13': ['N1', 'N3', 'N4', 'N5'],
+        'N1|P14': ['N1', 'N3', 'N4', 'N5', 'N10'],
+        'N1|P15': ['N1', 'N3', 'N4', 'N5'],
+        'N1|P16': ['N1', 'N3', 'N4', 'N5', 'N10'],
+        'N1|P17': ['N1', 'N3', 'N4', 'N5', 'N10'],
+      };
+
+      const direct = fixedByStartAndOption[`${startNodeId}|${optionId}`];
+      if (direct) {
+        return direct;
+      }
+
+      // Start-bazli fallback sabit akıs
+      if (startNodeId === 'N10') {
+        const fallbackByTarget: Record<string, string[]> = {
+          N1: ['N10', 'N5', 'N4', 'N3', 'N1'],
+          N3: ['N10', 'N5', 'N4', 'N3'],
+          N2: ['N10', 'N5', 'N6', 'N7', 'N8', 'N2'],
+          N9: ['N10', 'N5', 'N6', 'N7', 'N8', 'N2', 'N12', 'N11', 'N9'],
+          N6: ['N10', 'N5', 'N6'],
+          N7: ['N10', 'N5', 'N6', 'N7'],
+          N8: ['N10', 'N5', 'N6', 'N7', 'N8'],
+          N4: ['N10', 'N5', 'N4'],
+          N5: ['N10', 'N5'],
+          N10: ['N10'],
+        };
+        return fallbackByTarget[targetNodeId] ?? null;
+      }
+
+      return null;
+    },
+    [],
+  );
+
   useEffect(() => {
     if (currentNodeId && destinationNodeId) {
-      const result = findShortestRoute(KAT0_BUILDING_MAP, currentNodeId, destinationNodeId);
+      const fixedSequence = getFixedRouteSequence(
+        currentNodeId,
+        destinationOptionId,
+        destinationNodeId,
+      );
+      if (fixedSequence) {
+        const fixedBySequence = buildRouteFromNodeSequence(fixedSequence);
+        if (fixedBySequence) {
+          setRoute(fixedBySequence);
+          setRouteProgressSteps(0);
+          return;
+        }
+      }
+
+      const forcedCheckpoints = getRearCorridorPolicyCheckpoints(
+        currentNodeId,
+        destinationNodeId,
+      );
+      const result =
+        forcedCheckpoints && forcedCheckpoints.length > 0
+          ? buildRouteViaCheckpoints(currentNodeId, destinationNodeId, forcedCheckpoints) ??
+            findShortestRoute(KAT0_BUILDING_MAP, currentNodeId, destinationNodeId)
+          : findShortestRoute(KAT0_BUILDING_MAP, currentNodeId, destinationNodeId);
+
       setRoute(result);
       setRouteProgressSteps(0);
     }
-  }, [currentNodeId, destinationNodeId]);
+  }, [
+    currentNodeId,
+    destinationNodeId,
+    destinationOptionId,
+    getFixedRouteSequence,
+    buildRouteFromNodeSequence,
+  ]);
 
   const requestPermissions = async () => {
     const next = await requestCorePermissions();
@@ -435,6 +669,7 @@ function App() {
           if (!selected) {
             return;
           }
+          setDestinationOptionId(selected.id);
           setDestinationNodeId(selected.targetNodeId);
           setSelectedDestinationLabel(selected.name);
           setSelectedDestinationNearNodeId(selected.nearNodeId);

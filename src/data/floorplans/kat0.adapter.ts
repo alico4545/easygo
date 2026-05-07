@@ -12,6 +12,9 @@ const nodeTypeById: Record<string, NodeType> = {
   N8: 'service',
   N9: 'junction',
   N10: 'entrance',
+  N11: 'room',
+  N12: 'room',
+  N13: 'room',
 };
 
 const toBuildingNode = (id: string, name: string, floor: number): BuildingNode => ({
