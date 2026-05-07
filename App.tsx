@@ -38,6 +38,11 @@ import {startStepCounter, StepCounterHandle} from './src/services/stepCounter';
 import {NavigationSessionScreen} from './src/screens';
 import {BuildingNode, RouteResult} from './src/types/navigation';
 
+const POI_PIN_OVERRIDES: Record<string, {xPx: number; yPx: number}> = {
+  // Mudur Yardimcisi Odasi 1 kapisi (koridor tarafi)
+  P02: {xPx: 2310, yPx: 705},
+};
+
 const buildRouteViaCheckpoints = (
   startNodeId: string,
   targetNodeId: string,
@@ -449,6 +454,15 @@ function App() {
   }, [route, routeProgressSteps]);
 
   const pinPosition = useMemo(() => {
+    if (
+      route &&
+      destinationOptionId &&
+      routeProgressSteps >= route.totalSteps &&
+      POI_PIN_OVERRIDES[destinationOptionId]
+    ) {
+      return POI_PIN_OVERRIDES[destinationOptionId];
+    }
+
     if (!route || route.steps.length === 0) {
       if (!currentNodeId) {
         return null;
@@ -478,7 +492,14 @@ function App() {
       xPx: from.xPx + (to.xPx - from.xPx) * t,
       yPx: from.yPx + (to.yPx - from.yPx) * t,
     };
-  }, [route, activeEdgeIndex, routeProgressSteps, nodeCoordMap, currentNodeId]);
+  }, [
+    route,
+    activeEdgeIndex,
+    routeProgressSteps,
+    nodeCoordMap,
+    currentNodeId,
+    destinationOptionId,
+  ]);
 
   const targetBearingDeg = useMemo(() => {
     if (!activeRouteEdge) {
