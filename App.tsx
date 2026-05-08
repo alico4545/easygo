@@ -1,5 +1,6 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
+  ImageSourcePropType,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -42,6 +43,69 @@ import {BuildingNode, RouteResult} from './src/types/navigation';
 const POI_PIN_OVERRIDES: Record<string, {xPx: number; yPx: number}> = {
   // Mudur Yardimcisi Odasi 1 kapisi (koridor tarafi)
   P02: {xPx: 2310, yPx: 705},
+};
+
+type RoutePhotoHint = {
+  title: string;
+  source: ImageSourcePropType;
+};
+
+const PHOTO_N1_N3 = require('./assets/routephotos/n1_n3.jpeg');
+const PHOTO_N3_N4 = require('./assets/routephotos/n3_n4.jpeg');
+const PHOTO_N4_N5 = require('./assets/routephotos/n4_n5.jpeg');
+const PHOTO_N5_N10 = require('./assets/routephotos/n5_n10.jpeg');
+const PHOTO_N11_N9 = require('./assets/routephotos/n11_n9.jpeg');
+const PHOTO_N9_START = require('./assets/routephotos/n9_start.jpeg');
+const PHOTO_N9_N11 = require('./assets/routephotos/n9_n11.jpeg');
+const PHOTO_N5_N4 = require('./assets/routephotos/n5_n4.jpeg');
+
+const STAGED_CORRIDOR_DESTINATIONS = new Set(['P12', 'P13', 'P14', 'P15', 'P16', 'P17']);
+
+const ROUTE_PHOTO_BY_EDGE: Record<string, RoutePhotoHint> = {
+  'N1->N3': {
+    title: 'Ana giristen bina icine ilerleme',
+    source: PHOTO_N1_N3,
+  },
+  'N3->N4': {
+    title: 'N4 merdiven gecisine yonelme',
+    source: PHOTO_N3_N4,
+  },
+  'N4->N5': {
+    title: 'Merdiven bolgesinden N5 koridor donusune gecis',
+    source: PHOTO_N4_N5,
+  },
+  'N5->N10': {
+    title: 'N5ten arka cikis koridoruna duz devam',
+    source: PHOTO_N5_N10,
+  },
+  'N11->N9': {
+    title: 'Koridor sonu N9 hattina ilerleme',
+    source: PHOTO_N11_N9,
+  },
+  'N12->N11': {
+    title: 'Koridorda N9 yonune devam',
+    source: PHOTO_N11_N9,
+  },
+  'N2->N12': {
+    title: 'Koridorda N9 yonune devam',
+    source: PHOTO_N11_N9,
+  },
+  'N9->N11': {
+    title: 'N9dan koridor icine donus',
+    source: PHOTO_N9_N11,
+  },
+  'N11->N12': {
+    title: 'Koridorda geri donus',
+    source: PHOTO_N11_N9,
+  },
+  'N12->N2': {
+    title: 'Koridorda geri donus',
+    source: PHOTO_N11_N9,
+  },
+  'N5->N4': {
+    title: 'N5ten merdiven bolgesine geri donus',
+    source: PHOTO_N5_N4,
+  },
 };
 
 const buildRouteViaCheckpoints = (
@@ -616,6 +680,97 @@ function App() {
     return bearingToCardinal(targetBearingDeg);
   }, [targetBearingDeg]);
 
+  const activePhotoHint = useMemo(() => {
+    const routeStartNodeId = route?.nodes?.[0]?.id ?? null;
+
+    // Basit kural: N10 (arka cikis) baslangici -> donus foto seti (mutlak oncelik).
+    if (route && (currentNodeId === 'N10' || routeStartNodeId === 'N10')) {
+      const progressRatio = route.totalSteps > 0 ? routeProgressSteps / route.totalSteps : 0;
+      if (progressRatio < 0.2) {
+        return {
+          title: 'N9 baslangic noktasindan cikis',
+          source: PHOTO_N9_START,
+        };
+      }
+      if (progressRatio < 0.72) {
+        return {
+          title: 'N9 - N11 koridorunda ilerleyin',
+          source: PHOTO_N9_N11,
+        };
+      }
+      return {
+        title: 'N5 - N4 merdiven donusune yaklasiyorsunuz',
+        source: PHOTO_N5_N4,
+      };
+    }
+
+    // Basit kural: N10 (arka cikis) baslangici -> ilk setin ters akisi.
+    if (route && routeStartNodeId === 'N10') {
+      const progressRatio = route.totalSteps > 0 ? routeProgressSteps / route.totalSteps : 0;
+      if (progressRatio < 0.35) {
+        return {
+          title: 'Arka cikistan N5 hattina ilerleyin',
+          source: PHOTO_N5_N10,
+        };
+      }
+      if (progressRatio < 0.7) {
+        return {
+          title: 'N5ten merdiven bolgesine yaklasin',
+          source: PHOTO_N4_N5,
+        };
+      }
+      return {
+        title: 'N3/N1 koridoruna yonelin',
+        source: PHOTO_N3_N4,
+      };
+    }
+
+    if (!activeRouteEdge) {
+      return null;
+    }
+
+    // Basit kural: N1 baslangici -> ilk foto seti (hedef bu gruptaysa sirali).
+    if (
+      destinationOptionId &&
+      STAGED_CORRIDOR_DESTINATIONS.has(destinationOptionId) &&
+      route &&
+      routeStartNodeId === 'N1'
+    ) {
+      const progressRatio = route.totalSteps > 0 ? routeProgressSteps / route.totalSteps : 0;
+      if (progressRatio < 0.2) {
+        return {
+          title: 'Ana giristen bina icine ilerleme',
+          source: PHOTO_N1_N3,
+        };
+      }
+      if (progressRatio < 0.4) {
+        return {
+          title: 'N4 merdiven gecisine yonelme',
+          source: PHOTO_N3_N4,
+        };
+      }
+      if (progressRatio < 0.58) {
+        return {
+          title: 'Merdiven bolgesinden N5 koridor donusune gecis',
+          source: PHOTO_N4_N5,
+        };
+      }
+      if (progressRatio < 0.78) {
+        return {
+          title: 'N5 - N10 hattinda ilerleyin',
+          source: PHOTO_N5_N10,
+        };
+      }
+      return {
+        title: 'N11 - N9 koridoruna devam edin',
+        source: PHOTO_N11_N9,
+      };
+    }
+
+    const key = `${activeRouteEdge.from}->${activeRouteEdge.to}`;
+    return ROUTE_PHOTO_BY_EDGE[key] ?? null;
+  }, [activeRouteEdge, destinationOptionId, route, routeProgressSteps, currentNodeId]);
+
   if (activeScreen === 'navigation' && route) {
     return (
       <>
@@ -627,6 +782,7 @@ function App() {
           facingHint={facingHint}
           targetCardinal={targetCardinal}
           pinPosition={pinPosition}
+          photoHint={activePhotoHint}
           onBack={() => setActiveScreen('home')}
           onManualStep={() => {
             setSensorSteps(prev => prev + 1);

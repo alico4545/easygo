@@ -1,9 +1,12 @@
 import React, {useMemo, useState} from 'react';
 import {
+  Image,
+  ImageSourcePropType,
   ImageBackground,
   LayoutChangeEvent,
   Pressable,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -18,6 +21,10 @@ type NavigationSessionScreenProps = {
   facingHint: string;
   targetCardinal: string;
   pinPosition: {xPx: number; yPx: number} | null;
+  photoHint?: {
+    title: string;
+    source: ImageSourcePropType;
+  } | null;
   onBack: () => void;
   onManualStep: () => void;
 };
@@ -34,6 +41,7 @@ export function NavigationSessionScreen({
   facingHint,
   targetCardinal,
   pinPosition,
+  photoHint,
   onBack,
   onManualStep,
 }: NavigationSessionScreenProps) {
@@ -89,7 +97,10 @@ export function NavigationSessionScreen({
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}>
         <View style={styles.topBanner}>
           <Text style={styles.bannerIcon}>➜</Text>
           <View style={styles.bannerTextWrap}>
@@ -150,6 +161,13 @@ export function NavigationSessionScreen({
           Bas: {Math.round(headingDeg)}° • Hedef: {targetBearingDeg === null ? '-' : `${Math.round(targetBearingDeg)}°`} ({targetCardinal})
         </Text>
 
+        {!!photoHint && (
+          <View style={styles.photoCard}>
+            <Text style={styles.photoTitle}>{photoHint.title}</Text>
+            <Image source={photoHint.source} style={styles.photoImage} resizeMode="cover" />
+          </View>
+        )}
+
         <View style={styles.mapCard}>
           <ImageBackground
             source={require('../../assets/floorplans/screen_kat0.png')}
@@ -179,14 +197,15 @@ export function NavigationSessionScreen({
             <Text style={styles.secondaryText}>Ana Ekrana Don</Text>
           </Pressable>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: '#0b2f45'},
-  container: {flex: 1, padding: 12, gap: 10},
+  scroll: {flex: 1},
+  container: {flexGrow: 1, padding: 12, paddingBottom: 28, gap: 10},
   topBanner: {
     backgroundColor: 'rgba(20,35,40,0.95)',
     borderRadius: 18,
@@ -309,6 +328,14 @@ const styles = StyleSheet.create({
   statBig: {color: '#fff', fontSize: 22, fontWeight: '800'},
   statLabel: {color: '#d1e2eb', fontSize: 12},
   compassMeta: {color: '#c8dbe7', fontSize: 12, textAlign: 'center'},
+  photoCard: {
+    backgroundColor: 'rgba(8,20,28,0.9)',
+    borderRadius: 12,
+    padding: 8,
+    gap: 8,
+  },
+  photoTitle: {color: '#e2edf3', fontSize: 12, fontWeight: '700'},
+  photoImage: {width: '100%', height: 150, borderRadius: 10},
   mapCard: {
     width: '100%',
     backgroundColor: '#e5eef4',
