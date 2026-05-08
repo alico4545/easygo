@@ -247,11 +247,12 @@ function App() {
       Record<string, {from: string; to: string; steps: number; instruction: string}>
     >((acc, edge) => {
       acc[`${edge.from}->${edge.to}`] = edge;
+      const reverseTargetName = nodesById[edge.from]?.name ?? edge.from;
       acc[`${edge.to}->${edge.from}`] = {
         from: edge.to,
         to: edge.from,
         steps: edge.steps,
-        instruction: edge.instruction,
+        instruction: `${reverseTargetName} yonune ilerleyin.`,
       };
       return acc;
     }, {});
