@@ -326,6 +326,9 @@ function App() {
         'N1|P15': ['N1', 'N3', 'N4', 'N5'],
         'N1|P16': ['N1', 'N3', 'N4', 'N5', 'N10'],
         'N1|P17': ['N1', 'N3', 'N4', 'N5', 'N10'],
+
+        // N9 (koridor kapisi) -> sabit hedef dizileri
+        'N9|P15': ['N9', 'N11', 'N12', 'N6', 'N5'], // Mudur Odasi
       };
 
       const direct = fixedByStartAndOption[`${startNodeId}|${optionId}`];
