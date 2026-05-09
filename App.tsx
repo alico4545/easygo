@@ -105,6 +105,31 @@ const PHOTO_N10_KORIDOR: RoutePhotoHint = {
   source: require('./assets/routephotos/n10_koridor.jpeg'),
 };
 
+const PHOTO_N10_KUZEY_KORIDOR: RoutePhotoHint = {
+  title: 'N10 kuzey koridoru',
+  source: require('./assets/routephotos/n10_kuzey_koridor.jpeg'),
+};
+
+const PHOTO_N5_N4_RETURN: RoutePhotoHint = {
+  title: 'N5 -> N4 donus',
+  source: require('./assets/routephotos/n5_n4.jpeg'),
+};
+
+const PHOTO_N13_N2_RETURN: RoutePhotoHint = {
+  title: 'N13 -> N2 donus',
+  source: require('./assets/routephotos/n13_n2_2.jpeg'),
+};
+
+const PHOTO_N12_N11_RETURN: RoutePhotoHint = {
+  title: 'N12 -> N11 donus',
+  source: require('./assets/routephotos/n12_n11_1.jpeg'),
+};
+
+const PHOTO_N11_N9_RETURN: RoutePhotoHint = {
+  title: 'N11 -> N9 donus',
+  source: require('./assets/routephotos/n11_n9_2.jpeg'),
+};
+
 const buildRouteViaCheckpoints = (
   startNodeId: string,
   targetNodeId: string,
@@ -683,6 +708,31 @@ function App() {
     }
 
     const routeStartNodeId = route?.nodes?.[0]?.id ?? null;
+
+    // N10'dan N9 tarafina giden tum rotalar: sabit fotograf akisi.
+    if (
+      route &&
+      (routeStartNodeId === 'N10' || currentNodeId === 'N10') &&
+      route.nodes.some(n => n.id === 'N9')
+    ) {
+      const progressRatio = route.totalSteps > 0 ? routeProgressSteps / route.totalSteps : 0;
+      if (progressRatio < 0.12) {
+        return PHOTO_BY_QR_NODE.N10; // n10_start
+      }
+      if (progressRatio < 0.34) {
+        return PHOTO_N10_KUZEY_KORIDOR;
+      }
+      if (progressRatio < 0.56) {
+        return PHOTO_N5_N4_RETURN;
+      }
+      if (progressRatio < 0.78) {
+        return PHOTO_N13_N2_RETURN;
+      }
+      if (progressRatio < 0.92) {
+        return PHOTO_N12_N11_RETURN;
+      }
+      return PHOTO_N11_N9_RETURN;
+    }
 
     // N9'dan bina icine giden tum koridor rotalarinda sabit sira:
     // N9-Koridor -> N9-N12 -> N9-N2 -> N9-N3 -> (merdiven) N3-N4
