@@ -50,62 +50,59 @@ type RoutePhotoHint = {
   source: ImageSourcePropType;
 };
 
-const PHOTO_N1_N3 = require('./assets/routephotos/n1_n3.jpeg');
-const PHOTO_N3_N4 = require('./assets/routephotos/n3_n4.jpeg');
-const PHOTO_N4_N5 = require('./assets/routephotos/n4_n5.jpeg');
-const PHOTO_N5_N10 = require('./assets/routephotos/n5_n10.jpeg');
-const PHOTO_N11_N9 = require('./assets/routephotos/n11_n9.jpeg');
-const PHOTO_N9_START = require('./assets/routephotos/n9_start.jpeg');
-const PHOTO_N9_N11 = require('./assets/routephotos/n9_n11.jpeg');
-const PHOTO_N5_N4 = require('./assets/routephotos/n5_n4.jpeg');
+const PHOTO_BY_QR_NODE: Record<string, RoutePhotoHint> = {
+  N1: {
+    title: 'Ana giris (N1)',
+    source: require('./assets/routephotos/n1_n3.jpeg'),
+  },
+  N10: {
+    title: 'Arka cikis (N10)',
+    source: require('./assets/routephotos/n10_start.jpeg'),
+  },
+  N9: {
+    title: 'Koridor cikis sol uc (N9)',
+    source: require('./assets/routephotos/n9_koridor.jpeg'),
+  },
+};
 
-const STAGED_CORRIDOR_DESTINATIONS = new Set(['P12', 'P13', 'P14', 'P15', 'P16', 'P17']);
+const PHOTO_N9_N12: RoutePhotoHint = {
+  title: 'N9 -> N12 koridoru',
+  source: require('./assets/routephotos/n9_n12.jpeg'),
+};
 
-const ROUTE_PHOTO_BY_EDGE: Record<string, RoutePhotoHint> = {
-  'N1->N3': {
-    title: 'Ana giristen bina icine ilerleme',
-    source: PHOTO_N1_N3,
-  },
-  'N3->N4': {
-    title: 'N4 merdiven gecisine yonelme',
-    source: PHOTO_N3_N4,
-  },
-  'N4->N5': {
-    title: 'Merdiven bolgesinden N5 koridor donusune gecis',
-    source: PHOTO_N4_N5,
-  },
-  'N5->N10': {
-    title: 'N5ten arka cikis koridoruna duz devam',
-    source: PHOTO_N5_N10,
-  },
-  'N11->N9': {
-    title: 'Koridor sonu N9 hattina ilerleme',
-    source: PHOTO_N11_N9,
-  },
-  'N12->N11': {
-    title: 'Koridorda N9 yonune devam',
-    source: PHOTO_N11_N9,
-  },
-  'N2->N12': {
-    title: 'Koridorda N9 yonune devam',
-    source: PHOTO_N11_N9,
-  },
-  'N9->N11': {
-    title: 'N9dan koridor icine donus',
-    source: PHOTO_N9_N11,
-  },
-  'N11->N12': {
-    title: 'Koridorda geri donus',
-    source: PHOTO_N11_N9,
-  },
-  'N12->N2': {
-    title: 'Koridorda geri donus',
-    source: PHOTO_N11_N9,
-  },
-  'N5->N4': {
-    title: 'N5ten merdiven bolgesine geri donus',
-    source: PHOTO_N5_N4,
-  },
+const PHOTO_N9_START: RoutePhotoHint = {
+  title: 'N9 baslangic',
+  source: require('./assets/routephotos/n9_koridor.jpeg'),
+};
+
+const PHOTO_N9_N2: RoutePhotoHint = {
+  title: 'N9 -> N2 koridoru',
+  source: require('./assets/routephotos/n9_n2.jpeg'),
+};
+
+const PHOTO_N9_N3: RoutePhotoHint = {
+  title: 'N9 -> N3 koridoru',
+  source: require('./assets/routephotos/n9_n3.jpeg'),
+};
+
+const PHOTO_N3_N4_STAIRS: RoutePhotoHint = {
+  title: 'N3 merdiven gecisi',
+  source: require('./assets/routephotos/n3_n4.jpeg'),
+};
+
+const PHOTO_N4_N5_SOUTH: RoutePhotoHint = {
+  title: 'Merdivenden sonra N4 -> N5 guney rotasi',
+  source: require('./assets/routephotos/n4_n5.jpeg'),
+};
+
+const PHOTO_N5_N10_SOUTH: RoutePhotoHint = {
+  title: 'N5 -> N10 guney rotasi',
+  source: require('./assets/routephotos/n5_n10.jpeg'),
+};
+
+const PHOTO_N10_KORIDOR: RoutePhotoHint = {
+  title: 'Arka cikis koridoru (N10)',
+  source: require('./assets/routephotos/n10_koridor.jpeg'),
 };
 
 const buildRouteViaCheckpoints = (
@@ -681,95 +678,125 @@ function App() {
   }, [targetBearingDeg]);
 
   const activePhotoHint = useMemo(() => {
-    const routeStartNodeId = route?.nodes?.[0]?.id ?? null;
-
-    // Basit kural: N10 (arka cikis) baslangici -> donus foto seti (mutlak oncelik).
-    if (route && (currentNodeId === 'N10' || routeStartNodeId === 'N10')) {
-      const progressRatio = route.totalSteps > 0 ? routeProgressSteps / route.totalSteps : 0;
-      if (progressRatio < 0.2) {
-        return {
-          title: 'N9 baslangic noktasindan cikis',
-          source: PHOTO_N9_START,
-        };
-      }
-      if (progressRatio < 0.72) {
-        return {
-          title: 'N9 - N11 koridorunda ilerleyin',
-          source: PHOTO_N9_N11,
-        };
-      }
-      return {
-        title: 'N5 - N4 merdiven donusune yaklasiyorsunuz',
-        source: PHOTO_N5_N4,
-      };
-    }
-
-    // Basit kural: N10 (arka cikis) baslangici -> ilk setin ters akisi.
-    if (route && routeStartNodeId === 'N10') {
-      const progressRatio = route.totalSteps > 0 ? routeProgressSteps / route.totalSteps : 0;
-      if (progressRatio < 0.35) {
-        return {
-          title: 'Arka cikistan N5 hattina ilerleyin',
-          source: PHOTO_N5_N10,
-        };
-      }
-      if (progressRatio < 0.7) {
-        return {
-          title: 'N5ten merdiven bolgesine yaklasin',
-          source: PHOTO_N4_N5,
-        };
-      }
-      return {
-        title: 'N3/N1 koridoruna yonelin',
-        source: PHOTO_N3_N4,
-      };
-    }
-
-    if (!activeRouteEdge) {
+    if (!currentNodeId) {
       return null;
     }
 
-    // Basit kural: N1 baslangici -> ilk foto seti (hedef bu gruptaysa sirali).
-    if (
-      destinationOptionId &&
-      STAGED_CORRIDOR_DESTINATIONS.has(destinationOptionId) &&
-      route &&
-      routeStartNodeId === 'N1'
-    ) {
-      const progressRatio = route.totalSteps > 0 ? routeProgressSteps / route.totalSteps : 0;
-      if (progressRatio < 0.2) {
-        return {
-          title: 'Ana giristen bina icine ilerleme',
-          source: PHOTO_N1_N3,
-        };
+    const routeStartNodeId = route?.nodes?.[0]?.id ?? null;
+
+    // N9'dan bina icine giden tum koridor rotalarinda sabit sira:
+    // N9-Koridor -> N9-N12 -> N9-N2 -> N9-N3 -> (merdiven) N3-N4
+    if (route && routeStartNodeId === 'N9') {
+      let cumulative = 0;
+      let stepsToN12: number | null = null;
+      let stepsToN2: number | null = null;
+      let stepsToN3: number | null = null;
+      let stepsToN4: number | null = null;
+      let stepsToN5: number | null = null;
+      let stepsToN10: number | null = null;
+      let hasStairTurnEdge = false;
+
+      for (const step of route.steps) {
+        if (
+          (step.from === 'N3' && step.to === 'N4') ||
+          (step.from === 'N6' && step.to === 'N5') ||
+          (step.from === 'N5' && step.to === 'N4')
+        ) {
+          hasStairTurnEdge = true;
+        }
+        cumulative += step.steps;
+        if (stepsToN12 === null && step.to === 'N12') {
+          stepsToN12 = cumulative;
+        }
+        if (stepsToN2 === null && step.to === 'N2') {
+          stepsToN2 = cumulative;
+        }
+        if (stepsToN3 === null && step.to === 'N3') {
+          stepsToN3 = cumulative;
+        }
+        if (stepsToN4 === null && step.to === 'N4') {
+          stepsToN4 = cumulative;
+        }
+        if (stepsToN5 === null && step.to === 'N5') {
+          stepsToN5 = cumulative;
+        }
+        if (stepsToN10 === null && step.to === 'N10') {
+          stepsToN10 = cumulative;
+        }
       }
-      if (progressRatio < 0.4) {
-        return {
-          title: 'N4 merdiven gecisine yonelme',
-          source: PHOTO_N3_N4,
-        };
+
+      if (routeProgressSteps < 2) {
+        return PHOTO_N9_START;
       }
-      if (progressRatio < 0.58) {
-        return {
-          title: 'Merdiven bolgesinden N5 koridor donusune gecis',
-          source: PHOTO_N4_N5,
-        };
+      if (stepsToN12 !== null && routeProgressSteps < stepsToN12) {
+        return PHOTO_N9_N12;
       }
-      if (progressRatio < 0.78) {
-        return {
-          title: 'N5 - N10 hattinda ilerleyin',
-          source: PHOTO_N5_N10,
-        };
+      if (stepsToN2 !== null && routeProgressSteps < stepsToN2) {
+        return PHOTO_N9_N2;
       }
-      return {
-        title: 'N11 - N9 koridoruna devam edin',
-        source: PHOTO_N11_N9,
-      };
+      if (stepsToN3 !== null && routeProgressSteps < stepsToN3) {
+        return PHOTO_N9_N3;
+      }
+
+      // Sert kural: rota merdiven donus kenari iceriyorsa, merdiven fazinda fotoyu zorla.
+      if (
+        hasStairTurnEdge &&
+        (
+          (activeRouteEdge?.from === 'N3' && activeRouteEdge?.to === 'N4') ||
+          (activeRouteEdge?.from === 'N6' && activeRouteEdge?.to === 'N5') ||
+          (activeRouteEdge?.from === 'N5' && activeRouteEdge?.to === 'N4')
+        )
+      ) {
+        return PHOTO_N3_N4_STAIRS;
+      }
+
+      const southPhaseStart = stepsToN4 ?? stepsToN3;
+
+      if (
+        southPhaseStart !== null &&
+        stepsToN5 !== null &&
+        routeProgressSteps >= southPhaseStart &&
+        routeProgressSteps < stepsToN5
+      ) {
+        return PHOTO_N4_N5_SOUTH;
+      }
+      if (
+        stepsToN5 !== null &&
+        stepsToN10 !== null &&
+        routeProgressSteps >= stepsToN5 &&
+        routeProgressSteps < stepsToN10
+      ) {
+        return PHOTO_N5_N10_SOUTH;
+      }
+      if (stepsToN10 !== null && routeProgressSteps >= stepsToN10) {
+        return PHOTO_N10_KORIDOR;
+      }
+
+      if (
+        hasStairTurnEdge &&
+        stepsToN3 !== null &&
+        routeProgressSteps >= Math.max(0, stepsToN3 - 1) &&
+        routeProgressSteps < (stepsToN5 ?? Number.MAX_SAFE_INTEGER)
+      ) {
+        return PHOTO_N3_N4_STAIRS;
+      }
+
+      return PHOTO_N9_N3;
     }
 
-    const key = `${activeRouteEdge.from}->${activeRouteEdge.to}`;
-    return ROUTE_PHOTO_BY_EDGE[key] ?? null;
-  }, [activeRouteEdge, destinationOptionId, route, routeProgressSteps, currentNodeId]);
+    return PHOTO_BY_QR_NODE[currentNodeId] ?? null;
+  }, [activeRouteEdge, currentNodeId, route, routeProgressSteps]);
+
+  const debugPhotoHint = useMemo(() => {
+    if (!activePhotoHint) {
+      return null;
+    }
+    const edge = activeRouteEdge ? `${activeRouteEdge.from}->${activeRouteEdge.to}` : '-';
+    return {
+      ...activePhotoHint,
+      title: `[${edge} | adim:${routeProgressSteps}] ${activePhotoHint.title}`,
+    };
+  }, [activePhotoHint, activeRouteEdge, routeProgressSteps]);
 
   if (activeScreen === 'navigation' && route) {
     return (
@@ -782,7 +809,7 @@ function App() {
           facingHint={facingHint}
           targetCardinal={targetCardinal}
           pinPosition={pinPosition}
-          photoHint={activePhotoHint}
+          photoHint={debugPhotoHint}
           onBack={() => setActiveScreen('home')}
           onManualStep={() => {
             setSensorSteps(prev => prev + 1);
