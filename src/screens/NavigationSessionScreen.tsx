@@ -38,6 +38,8 @@ export function NavigationSessionScreen({
   onManualStep,
 }: NavigationSessionScreenProps) {
   const [canvas, setCanvas] = useState({width: 1, height: 1});
+  const headingToTargetDeg =
+    targetBearingDeg === null ? 0 : ((targetBearingDeg - headingDeg + 540) % 360) - 180;
 
   const totalSteps = route.totalSteps;
   const remainingSteps = Math.max(totalSteps - progressSteps, 0);
@@ -91,12 +93,33 @@ export function NavigationSessionScreen({
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
         <View style={styles.topBanner}>
-          <Text style={styles.bannerIcon}>➜</Text>
+          <Text style={[styles.bannerIcon, {transform: [{rotate: `${headingToTargetDeg}deg`}]}]}>
+            ↑
+          </Text>
           <View style={styles.bannerTextWrap}>
             <Text style={styles.bannerTitle}>{facingHint}</Text>
             <Text style={styles.bannerSub}>{activeInstruction}</Text>
           </View>
-          <View style={styles.compassWrap}>
+        </View>
+
+        <View style={styles.infoLayer}>
+          <View style={styles.bottomStats}>
+            <View style={styles.statCard}>
+              <Text style={styles.statBigBlue}>{remainingMeters.toFixed(1)} m</Text>
+              <View style={styles.statLabelRow}>
+                <Text style={styles.statIcon}>📏</Text>
+                <Text style={styles.statLabel}>HEDEFE KALAN</Text>
+              </View>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statBigGreen}>{progressSteps}</Text>
+              <View style={styles.statLabelRow}>
+                <Text style={styles.statIcon}>👣</Text>
+                <Text style={styles.statLabel}>ATILAN ADIM SAYISI</Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.rightCompassWrap}>
             <View style={styles.compassFace}>
               <View style={[styles.compassDial, {transform: [{rotate: `${-headingDeg}deg`}]}]}>
                 {Array.from({length: 72}).map((_, i) => {
@@ -105,7 +128,7 @@ export function NavigationSessionScreen({
                   const northTick = i === 0;
                   return (
                     <View
-                      key={`tick-${i}`}
+                      key={`tick-right-${i}`}
                       style={[
                         styles.tick,
                         northTick
@@ -113,7 +136,7 @@ export function NavigationSessionScreen({
                           : major
                             ? styles.tickMajor
                             : styles.tickMinor,
-                        {transform: [{rotate: `${angle}deg`}, {translateY: -36}]},
+                        {transform: [{rotate: `${angle}deg`}, {translateY: -44}]},
                       ]}
                     />
                   );
@@ -123,32 +146,16 @@ export function NavigationSessionScreen({
                 <Text style={[styles.cardinal, styles.cardinalS]}>G</Text>
                 <Text style={[styles.cardinal, styles.cardinalW]}>B</Text>
               </View>
-              <View style={styles.centerDot} />
               <View style={styles.crossH} />
               <View style={styles.crossV} />
+              <View style={styles.centerDot} />
+              <Text style={[styles.compassNeedle, {transform: [{rotate: `${headingToTargetDeg}deg`}]}]}>
+                ↑
+              </Text>
               <View style={styles.fixedTopMarker} />
             </View>
           </View>
         </View>
-
-        <View style={styles.bottomStats}>
-          <View style={styles.statCol}>
-            <Text style={styles.statBig}>{Math.ceil(remainingMeters / 0.9)} dk</Text>
-            <Text style={styles.statLabel}>tahmini</Text>
-          </View>
-          <View style={styles.statCol}>
-            <Text style={styles.statBig}>{remainingSteps}</Text>
-            <Text style={styles.statLabel}>adim</Text>
-          </View>
-          <View style={styles.statCol}>
-            <Text style={styles.statBig}>{remainingMeters.toFixed(1)} m</Text>
-            <Text style={styles.statLabel}>kalan</Text>
-          </View>
-        </View>
-
-        <Text style={styles.compassMeta}>
-          Bas: {Math.round(headingDeg)}° • Hedef: {targetBearingDeg === null ? '-' : `${Math.round(targetBearingDeg)}°`} ({targetCardinal})
-        </Text>
 
         <View style={styles.mapCard}>
           <ImageBackground
@@ -186,31 +193,23 @@ export function NavigationSessionScreen({
 
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: '#0b2f45'},
-  container: {flex: 1, padding: 12, gap: 10},
+  container: {flex: 1, padding: 12, gap: 10, paddingTop: 50},
   topBanner: {
     backgroundColor: 'rgba(20,35,40,0.95)',
     borderRadius: 18,
     padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 10,marginBottom: 50,
   },
   bannerIcon: {color: '#fff', fontSize: 26, fontWeight: '800'},
   bannerTextWrap: {flex: 1},
   bannerTitle: {color: '#fff', fontSize: 17, fontWeight: '800'},
   bannerSub: {color: '#d6e5ec', fontSize: 13, marginTop: 2},
-  compassWrap: {
-    width: 108,
-    height: 108,
-    borderRadius: 18,
-    backgroundColor: '#0b0f16',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 0,
-  },
+  infoLayer: {flexDirection: 'row', alignItems: 'center', gap: 10},
   compassFace: {
-    width: 86,
-    height: 86,
+    width: 104,
+    height: 104,
     borderRadius: 999,
     backgroundColor: '#0b0f16',
     alignItems: 'center',
@@ -218,8 +217,8 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   compassDial: {
-    width: 86,
-    height: 86,
+    width: 104,
+    height: 104,
     borderRadius: 999,
     position: 'absolute',
     alignItems: 'center',
@@ -255,19 +254,19 @@ const styles = StyleSheet.create({
     textShadowRadius: 1,
   },
   cardinalN: {
-    top: 12,
+    top: 16,
     color: '#ef4444',
   },
   cardinalE: {
-    right: 12,
-    top: 37,
+    right: 16,
+    top: 46,
   },
   cardinalS: {
-    bottom: 12,
+    bottom: 16,
   },
   cardinalW: {
-    left: 12,
-    top: 37,
+    left: 16,
+    top: 46,
   },
   crossH: {
     position: 'absolute',
@@ -285,10 +284,20 @@ const styles = StyleSheet.create({
   },
   centerDot: {
     position: 'absolute',
-    width: 6,
-    height: 6,
+    width: 8,
+    height: 8,
     borderRadius: 999,
     backgroundColor: '#cbd5e1',
+  },
+  compassNeedle: {
+    position: 'absolute',
+    color: '#ef4444',
+    fontSize: 34,
+    fontWeight: '900',
+    lineHeight: 36,
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: {width: 0, height: 1},
+    textShadowRadius: 2,
   },
   fixedTopMarker: {
     position: 'absolute',
@@ -298,17 +307,31 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: '#f8fafc',
   },
-  bottomStats: {
-    backgroundColor: '#1f4f67',
-    borderRadius: 18,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+  bottomStats: {flex: 1, flexDirection: 'row', gap: 10},
+  statCard: {
+    flex: 1,
+    minHeight: 72,
+    borderRadius: 12,
+    backgroundColor: '#0f2542',
+    borderWidth: 1,
+    borderColor: '#274d79',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
   },
-  statCol: {alignItems: 'center'},
-  statBig: {color: '#fff', fontSize: 22, fontWeight: '800'},
-  statLabel: {color: '#d1e2eb', fontSize: 12},
-  compassMeta: {color: '#c8dbe7', fontSize: 12, textAlign: 'center'},
+  statBigBlue: {color: '#5aa3ff', fontSize: 34, fontWeight: '800'},
+  statBigGreen: {color: '#34d399', fontSize: 34, fontWeight: '800'},
+  statLabelRow: {flexDirection: 'row', alignItems: 'center', gap: 5},
+  statIcon: {fontSize: 12},
+  statLabel: {color: '#8ea9c5', fontSize: 11, fontWeight: '700'},
+  rightCompassWrap: {
+    width: 112,
+    height: 112,
+    borderRadius: 14,
+    backgroundColor: '#081321',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   mapCard: {
     width: '100%',
     backgroundColor: '#e5eef4',

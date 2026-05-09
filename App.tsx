@@ -601,12 +601,12 @@ function App() {
 
   const facingHint = useMemo(() => {
     if (targetBearingDeg === null) {
-      return 'Hedefe ulasildi veya bearing hesaplanamadi.';
+      return 'Hedefe ulaştınız. Konumunuzu kontrol edin.';
     }
     const delta = angleDeltaSigned(headingDeg, targetBearingDeg);
     const targetCardinal = bearingToCardinal(targetBearingDeg);
     const turn = turnInstruction(delta);
-    return `${turn} • ${targetCardinal} yonune ilerle`;
+    return `${turn}. ${targetCardinal} yönünde ilerle.`;
   }, [headingDeg, targetBearingDeg]);
 
   const targetCardinal = useMemo(() => {

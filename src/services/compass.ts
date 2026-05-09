@@ -40,29 +40,29 @@ export const angleDeltaSigned = (fromDeg: number, toDeg: number): number => {
   return delta;
 };
 
-export const bearingToCardinal = (deg: number): 'Kuzey' | 'Dogu' | 'Guney' | 'Bati' => {
+export const bearingToCardinal = (deg: number): 'Kuzey' | 'Doğu' | 'Güney' | 'Batı' => {
   if (deg >= 315 || deg < 45) {
     return 'Kuzey';
   }
   if (deg >= 45 && deg < 135) {
-    return 'Dogu';
+    return 'Doğu';
   }
   if (deg >= 135 && deg < 225) {
-    return 'Guney';
+    return 'Güney';
   }
-  return 'Bati';
+  return 'Batı';
 };
 
 export const turnInstruction = (signedDelta: number): string => {
   const abs = Math.abs(signedDelta);
   if (abs <= 15) {
-    return 'Duz bakis yeterli';
+    return 'Aynı yönde devam et';
   }
   if (abs <= 45) {
-    return signedDelta > 0 ? 'Hafif saga don' : 'Hafif sola don';
+    return signedDelta > 0 ? 'Biraz sağa dön' : 'Biraz sola dön';
   }
   if (abs <= 120) {
-    return signedDelta > 0 ? 'Saga don' : 'Sola don';
+    return signedDelta > 0 ? 'Sağa dön' : 'Sola dön';
   }
-  return 'Geri don';
+  return 'Arkana dön';
 };
