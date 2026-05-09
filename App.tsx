@@ -784,6 +784,70 @@ function App() {
       return PHOTO_N9_N3;
     }
 
+    // N1'den guneye giden rotalarda, N9 ile ortak guney foto akisi.
+    if (route && routeStartNodeId === 'N1') {
+      let cumulative = 0;
+      let stepsToN3: number | null = null;
+      let stepsToN4: number | null = null;
+      let stepsToN5: number | null = null;
+      let stepsToN10: number | null = null;
+      let hasStairTurnEdge = false;
+
+      for (const step of route.steps) {
+        if (
+          (step.from === 'N3' && step.to === 'N4') ||
+          (step.from === 'N6' && step.to === 'N5') ||
+          (step.from === 'N5' && step.to === 'N4')
+        ) {
+          hasStairTurnEdge = true;
+        }
+        cumulative += step.steps;
+        if (stepsToN3 === null && step.to === 'N3') {
+          stepsToN3 = cumulative;
+        }
+        if (stepsToN4 === null && step.to === 'N4') {
+          stepsToN4 = cumulative;
+        }
+        if (stepsToN5 === null && step.to === 'N5') {
+          stepsToN5 = cumulative;
+        }
+        if (stepsToN10 === null && step.to === 'N10') {
+          stepsToN10 = cumulative;
+        }
+      }
+
+      if (
+        hasStairTurnEdge &&
+        ((activeRouteEdge?.from === 'N3' && activeRouteEdge?.to === 'N4') ||
+          (activeRouteEdge?.from === 'N6' && activeRouteEdge?.to === 'N5') ||
+          (activeRouteEdge?.from === 'N5' && activeRouteEdge?.to === 'N4'))
+      ) {
+        return PHOTO_N3_N4_STAIRS;
+      }
+
+      const southPhaseStart = stepsToN4 ?? stepsToN3;
+
+      if (
+        southPhaseStart !== null &&
+        stepsToN5 !== null &&
+        routeProgressSteps >= southPhaseStart &&
+        routeProgressSteps < stepsToN5
+      ) {
+        return PHOTO_N4_N5_SOUTH;
+      }
+      if (
+        stepsToN5 !== null &&
+        stepsToN10 !== null &&
+        routeProgressSteps >= stepsToN5 &&
+        routeProgressSteps < stepsToN10
+      ) {
+        return PHOTO_N5_N10_SOUTH;
+      }
+      if (stepsToN10 !== null && routeProgressSteps >= stepsToN10) {
+        return PHOTO_N10_KORIDOR;
+      }
+    }
+
     return PHOTO_BY_QR_NODE[currentNodeId] ?? null;
   }, [activeRouteEdge, currentNodeId, route, routeProgressSteps]);
 
