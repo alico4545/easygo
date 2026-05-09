@@ -36,7 +36,7 @@ import {
   turnInstruction,
 } from './src/services/compass';
 import {startStepCounter, StepCounterHandle} from './src/services/stepCounter';
-import {NavigationSessionScreen} from './src/screens';
+import {NavigationSessionScreen, SplashScreen} from './src/screens';
 import {BuildingNode, RouteResult} from './src/types/navigation';
 
 const POI_PIN_OVERRIDES: Record<string, {xPx: number; yPx: number}> = {
@@ -140,6 +140,7 @@ function App() {
   };
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [showStartupSplash, setShowStartupSplash] = useState(true);
   const [showQRModal, setShowQRModal] = useState(false);
   const [showDestinationModal, setShowDestinationModal] = useState(false);
   const [showFloorPlanModal, setShowFloorPlanModal] = useState(false);
@@ -178,6 +179,13 @@ function App() {
     }
     return KAT0_BUILDING_MAP.nodes.find(n => n.id === destinationNodeId);
   }, [destinationNodeId]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowStartupSplash(false);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     let stepCounter: StepCounterHandle | null = null;
@@ -430,17 +438,6 @@ function App() {
   }, [route, routeProgressSteps]);
 
   const destinationOptions = useMemo<DestinationOption[]>(() => {
-    const nodeDestinations = KAT0_BUILDING_MAP.nodes
-      .filter(node => KAT0_DESTINATION_IDS.has(node.id))
-      .map(node => ({
-        id: node.id,
-        name: node.name,
-        floor: node.floor,
-        targetNodeId: node.id,
-        nearNodeId: node.id,
-        offsetMeters: 0,
-      }));
-
     const poiDestinations = KAT0_DATASET.pois.map(poi => ({
       id: poi.id,
       name: poi.name,
@@ -450,7 +447,22 @@ function App() {
       offsetMeters: poi.offsetMeters,
     }));
 
-    return [...nodeDestinations, ...poiDestinations];
+    // Kullanıcı listesinde kapı/node teknik adları yerine yalnızca POI hedefleri gösterilir.
+    // Hizmetli odası tek seçenek olarak gösterilir.
+    const result: DestinationOption[] = [];
+    let hasHizmetli = false;
+    for (const item of poiDestinations) {
+      if (item.name.startsWith('Hizmetli Odası')) {
+        if (hasHizmetli) {
+          continue;
+        }
+        hasHizmetli = true;
+        result.push({...item, name: 'Hizmetli Odası'});
+        continue;
+      }
+      result.push(item);
+    }
+    return result;
   }, []);
   const qrStartOptions = KAT0_BUILDING_MAP.nodes.filter(node =>
     KAT0_QR_NODE_IDS.has(node.id),
@@ -615,6 +627,10 @@ function App() {
     }
     return bearingToCardinal(targetBearingDeg);
   }, [targetBearingDeg]);
+
+  if (showStartupSplash) {
+    return <SplashScreen />;
+  }
 
   if (activeScreen === 'navigation' && route) {
     return (

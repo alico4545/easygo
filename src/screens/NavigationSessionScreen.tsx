@@ -158,24 +158,26 @@ export function NavigationSessionScreen({
         </View>
 
         <View style={styles.mapCard}>
-          <ImageBackground
-            source={require('../../assets/floorplans/screen_kat0.png')}
-            resizeMode="contain"
-            style={styles.mapImage}
-            imageStyle={styles.mapImageInner}
-            onLayout={onMapLayout}>
-            {!!pin && (
-              <View
-                style={[
-                  styles.pin,
-                  {
-                    left: pin.left - 10,
-                    top: pin.top - 24,
-                  },
-                ]}
-              />
-            )}
-          </ImageBackground>
+          <View style={styles.mapRotateLayer}>
+            <ImageBackground
+              source={require('../../assets/floorplans/screen_kat0.png')}
+              resizeMode="contain"
+              style={styles.mapImage}
+              imageStyle={styles.mapImageInner}
+              onLayout={onMapLayout}>
+              {!!pin && (
+                <View
+                  style={[
+                    styles.pin,
+                    {
+                      left: pin.left - 10,
+                      top: pin.top - 24,
+                    },
+                  ]}
+                />
+              )}
+            </ImageBackground>
+          </View>
         </View>
 
         <View style={styles.row}>
@@ -193,14 +195,14 @@ export function NavigationSessionScreen({
 
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: '#0b2f45'},
-  container: {flex: 1, padding: 12, gap: 10, paddingTop: 50},
+  container: {flex: 1, padding: 12, gap: 10},
   topBanner: {
     backgroundColor: 'rgba(20,35,40,0.95)',
     borderRadius: 18,
     padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,marginBottom: 50,
+    gap: 10,
   },
   bannerIcon: {color: '#fff', fontSize: 26, fontWeight: '800'},
   bannerTextWrap: {flex: 1},
@@ -319,8 +321,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 8,
   },
-  statBigBlue: {color: '#5aa3ff', fontSize: 34, fontWeight: '800'},
-  statBigGreen: {color: '#34d399', fontSize: 34, fontWeight: '800'},
+  statBigBlue: {color: '#5aa3ff', fontSize: 26, fontWeight: '800'},
+  statBigGreen: {color: '#34d399', fontSize: 26, fontWeight: '800'},
   statLabelRow: {flexDirection: 'row', alignItems: 'center', gap: 5},
   statIcon: {fontSize: 12},
   statLabel: {color: '#8ea9c5', fontSize: 11, fontWeight: '700'},
@@ -333,6 +335,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   mapCard: {
+    flex: 1,
+    minHeight: 320,
     width: '100%',
     backgroundColor: '#e5eef4',
     borderRadius: 14,
@@ -343,11 +347,16 @@ const styles = StyleSheet.create({
   },
   mapImage: {
     width: '100%',
-    aspectRatio: CROKI_W / CROKI_H,
+    height: '100%',
     alignSelf: 'center',
   },
   mapImageInner: {
     borderRadius: 10,
+  },
+  mapRotateLayer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   pin: {
     position: 'absolute',
