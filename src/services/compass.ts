@@ -56,13 +56,13 @@ export const bearingToCardinal = (deg: number): 'Kuzey' | 'Dogu' | 'Guney' | 'Ba
 export const turnInstruction = (signedDelta: number): string => {
   const abs = Math.abs(signedDelta);
   if (abs <= 15) {
-    return 'Duz bakis yeterli';
+    return 'Duz git';
   }
   if (abs <= 45) {
-    return signedDelta > 0 ? 'Hafif saga don' : 'Hafif sola don';
+    return signedDelta > 0 ? 'Biraz saga don' : 'Biraz sola don';
   }
   if (abs <= 120) {
     return signedDelta > 0 ? 'Saga don' : 'Sola don';
   }
-  return 'Geri don';
+  return 'Arkani don';
 };

@@ -46,6 +46,7 @@ export function NavigationSessionScreen({
   onManualStep,
 }: NavigationSessionScreenProps) {
   const [canvas, setCanvas] = useState({width: 1, height: 1});
+  const [showLocationPhoto, setShowLocationPhoto] = useState(false);
 
   const totalSteps = route.totalSteps;
   const remainingSteps = Math.max(totalSteps - progressSteps, 0);
@@ -162,6 +163,16 @@ export function NavigationSessionScreen({
         </Text>
 
         {!!photoHint && (
+          <Pressable
+            style={styles.photoToggle}
+            onPress={() => setShowLocationPhoto(prev => !prev)}>
+            <Text style={styles.photoToggleText}>
+              {showLocationPhoto ? 'Bulundugum yer fotosunu gizle' : 'Bulundugum yerin resmini goster'}
+            </Text>
+          </Pressable>
+        )}
+
+        {!!photoHint && showLocationPhoto && (
           <View style={styles.photoCard}>
             <Text style={styles.photoTitle}>{photoHint.title}</Text>
             <Image source={photoHint.source} style={styles.photoImage} resizeMode="cover" />
@@ -328,6 +339,16 @@ const styles = StyleSheet.create({
   statBig: {color: '#fff', fontSize: 22, fontWeight: '800'},
   statLabel: {color: '#d1e2eb', fontSize: 12},
   compassMeta: {color: '#c8dbe7', fontSize: 12, textAlign: 'center'},
+  photoToggle: {
+    backgroundColor: '#0f3d56',
+    borderWidth: 1,
+    borderColor: '#55839a',
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  photoToggleText: {color: '#e4f1f7', fontWeight: '700'},
   photoCard: {
     backgroundColor: 'rgba(8,20,28,0.9)',
     borderRadius: 12,

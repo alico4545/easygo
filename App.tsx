@@ -687,7 +687,7 @@ function App() {
 
   const facingHint = useMemo(() => {
     if (targetBearingDeg === null) {
-      return 'Hedefe ulasildi veya bearing hesaplanamadi.';
+      return 'Hedefe yakinsin. Lutfen konumu kontrol et.';
     }
     const delta = angleDeltaSigned(headingDeg, targetBearingDeg);
     const targetCardinal = bearingToCardinal(targetBearingDeg);
@@ -709,29 +709,41 @@ function App() {
 
     const routeStartNodeId = route?.nodes?.[0]?.id ?? null;
 
-    // N10'dan N9 tarafina giden tum rotalar: sabit fotograf akisi.
+    // N10'dan N9/kuzey-koridor tarafina giden tum rotalar:
+    // kirmayacak sekilde edge-bazli sabit secim.
     if (
       route &&
       (routeStartNodeId === 'N10' || currentNodeId === 'N10') &&
-      route.nodes.some(n => n.id === 'N9')
+      route.nodes.some(n => ['N9', 'N11', 'N12', 'N2', 'N13'].includes(n.id))
     ) {
-      const progressRatio = route.totalSteps > 0 ? routeProgressSteps / route.totalSteps : 0;
-      if (progressRatio < 0.12) {
+      const edge = activeRouteEdge ? `${activeRouteEdge.from}->${activeRouteEdge.to}` : '';
+
+      if (routeProgressSteps < 2 || !edge) {
         return PHOTO_BY_QR_NODE.N10; // n10_start
       }
-      if (progressRatio < 0.34) {
+
+      if (edge === 'N10->N5' || edge === 'N5->N10') {
         return PHOTO_N10_KUZEY_KORIDOR;
       }
-      if (progressRatio < 0.56) {
+
+      if (edge === 'N5->N4' || edge === 'N4->N3' || edge === 'N3->N4') {
         return PHOTO_N5_N4_RETURN;
       }
-      if (progressRatio < 0.78) {
+
+      if (edge === 'N3->N13' || edge === 'N13->N2' || edge === 'N2->N13') {
         return PHOTO_N13_N2_RETURN;
       }
-      if (progressRatio < 0.92) {
+
+      if (edge === 'N2->N12' || edge === 'N12->N11' || edge === 'N11->N12') {
         return PHOTO_N12_N11_RETURN;
       }
-      return PHOTO_N11_N9_RETURN;
+
+      if (edge === 'N11->N9' || edge === 'N9->N11') {
+        return PHOTO_N11_N9_RETURN;
+      }
+
+      // Kuzey tarafi icindeki tanimsiz edge'lerde guvenli fallback
+      return PHOTO_N10_KUZEY_KORIDOR;
     }
 
     // N9'dan bina icine giden tum koridor rotalarinda sabit sira:
@@ -821,6 +833,10 @@ function App() {
       if (stepsToN10 !== null && routeProgressSteps >= stepsToN10) {
         return PHOTO_N10_KORIDOR;
       }
+      // Hedef N5 cevresinde bitiyorsa (Mudur Odasi/Mudur Yrd 2-3 gibi), N5-N10 fotosu kalsin.
+      if (stepsToN5 !== null && stepsToN10 === null && routeProgressSteps >= stepsToN5) {
+        return PHOTO_N5_N10_SOUTH;
+      }
 
       if (
         hasStairTurnEdge &&
@@ -895,6 +911,17 @@ function App() {
       }
       if (stepsToN10 !== null && routeProgressSteps >= stepsToN10) {
         return PHOTO_N10_KORIDOR;
+      }
+
+      // N1 fallback'i tekrar giris fotografina donmesin; guney fazinda kal.
+      if (stepsToN5 !== null && stepsToN10 === null && routeProgressSteps >= stepsToN5) {
+        return PHOTO_N5_N10_SOUTH;
+      }
+      if (stepsToN5 !== null && routeProgressSteps >= stepsToN5) {
+        return PHOTO_N4_N5_SOUTH;
+      }
+      if (stepsToN4 !== null && routeProgressSteps >= stepsToN4) {
+        return PHOTO_N3_N4_STAIRS;
       }
     }
 
