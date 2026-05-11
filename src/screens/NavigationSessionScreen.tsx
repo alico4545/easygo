@@ -3,7 +3,6 @@ import {
   ImageBackground,
   LayoutChangeEvent,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
@@ -53,7 +52,7 @@ export function NavigationSessionScreen({
         return route.steps[i].instruction;
       }
     }
-    return 'Hedefe ulasildi.';
+    return 'Hedefe ulaşıldı.';
   }, [route.steps, progressSteps]);
 
   const imageRect = useMemo(() => {
@@ -90,259 +89,326 @@ export function NavigationSessionScreen({
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
-        <View style={styles.topBanner}>
+    <View style={styles.container}>
+      {/* Top Banner */}
+      <View style={styles.bannerCard}>
+        <View style={styles.bannerIconBox}>
           <Text style={[styles.bannerIcon, {transform: [{rotate: `${headingToTargetDeg}deg`}]}]}>
             ↑
           </Text>
-          <View style={styles.bannerTextWrap}>
-            <Text style={styles.bannerTitle}>{facingHint}</Text>
-            <Text style={styles.bannerSub}>{activeInstruction}</Text>
-          </View>
         </View>
-
-        <View style={styles.infoLayer}>
-          <View style={styles.bottomStats}>
-            <View style={styles.statCard}>
-              <Text style={styles.statBigBlue}>{remainingMeters.toFixed(1)} m</Text>
-              <View style={styles.statLabelRow}>
-                <Text style={styles.statIcon}>📏</Text>
-                <Text style={styles.statLabel}>HEDEFE KALAN</Text>
-              </View>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statBigGreen}>{progressSteps}</Text>
-              <View style={styles.statLabelRow}>
-                <Text style={styles.statIcon}>👣</Text>
-                <Text style={styles.statLabel}>ATILAN ADIM SAYISI</Text>
-              </View>
-            </View>
-          </View>
-          <View style={styles.rightCompassWrap}>
-            <View style={styles.compassFace}>
-              <View style={[styles.compassDial, {transform: [{rotate: `${-headingDeg}deg`}]}]}>
-                {Array.from({length: 72}).map((_, i) => {
-                  const angle = i * 5;
-                  const major = i % 6 === 0;
-                  const northTick = i === 0;
-                  return (
-                    <View
-                      key={`tick-right-${i}`}
-                      style={[
-                        styles.tick,
-                        northTick
-                          ? styles.tickNorth
-                          : major
-                            ? styles.tickMajor
-                            : styles.tickMinor,
-                        {transform: [{rotate: `${angle}deg`}, {translateY: -44}]},
-                      ]}
-                    />
-                  );
-                })}
-                <Text style={[styles.cardinal, styles.cardinalN]}>K</Text>
-                <Text style={[styles.cardinal, styles.cardinalE]}>D</Text>
-                <Text style={[styles.cardinal, styles.cardinalS]}>G</Text>
-                <Text style={[styles.cardinal, styles.cardinalW]}>B</Text>
-              </View>
-              <View style={styles.crossH} />
-              <View style={styles.crossV} />
-              <View style={styles.centerDot} />
-              <Text style={[styles.compassNeedle, {transform: [{rotate: `${headingToTargetDeg}deg`}]}]}>
-                ↑
-              </Text>
-              <View style={styles.fixedTopMarker} />
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.mapCard}>
-          <View style={styles.mapRotateLayer}>
-            <ImageBackground
-              source={require('../../assets/floorplans/screen_kat0.png')}
-              resizeMode="contain"
-              style={styles.mapImage}
-              imageStyle={styles.mapImageInner}
-              onLayout={onMapLayout}>
-              {!!pin && (
-                <View
-                  style={[
-                    styles.pin,
-                    {
-                      left: pin.left - 10,
-                      top: pin.top - 24,
-                    },
-                  ]}
-                />
-              )}
-            </ImageBackground>
-          </View>
-        </View>
-
-        <View style={styles.row}>
-          <Pressable style={styles.primary} onPress={onManualStep}>
-            <Text style={styles.primaryText}>+1 Adim (Demo)</Text>
-          </Pressable>
-          <Pressable style={styles.secondary} onPress={onBack}>
-            <Text style={styles.secondaryText}>Ana Ekrana Don</Text>
-          </Pressable>
+        <View style={styles.bannerTextWrap}>
+          <Text style={styles.bannerTitle}>{facingHint}</Text>
+          <Text style={styles.bannerSub}>{activeInstruction}</Text>
         </View>
       </View>
-    </SafeAreaView>
+
+      {/* Info Layer */}
+      <View style={styles.infoLayer}>
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <View style={styles.statIconBox}><Text style={styles.statIcon}>📏</Text></View>
+            <View>
+              <Text style={styles.statLabel}>KALAN MESAFE</Text>
+              <Text style={styles.statValueBlue}>{remainingMeters.toFixed(1)} <Text style={styles.statUnit}>m</Text></Text>
+            </View>
+          </View>
+          
+          <View style={styles.statCard}>
+            <View style={[styles.statIconBox, { backgroundColor: '#D1FAE5' }]}><Text style={styles.statIcon}>👣</Text></View>
+            <View>
+              <Text style={styles.statLabel}>ATILAN ADIM</Text>
+              <Text style={styles.statValueGreen}>{progressSteps}</Text>
+            </View>
+          </View>
+        </View>
+        
+        {/* Compass Widget */}
+        <View style={styles.compassCard}>
+          <View style={styles.compassFace}>
+            <View style={[styles.compassDial, {transform: [{rotate: `${-headingDeg}deg`}]}]}>
+              {Array.from({length: 72}).map((_, i) => {
+                const angle = i * 5;
+                const major = i % 6 === 0;
+                const northTick = i === 0;
+                return (
+                  <View
+                    key={`tick-right-${i}`}
+                    style={[
+                      styles.tick,
+                      northTick
+                        ? styles.tickNorth
+                        : major
+                          ? styles.tickMajor
+                          : styles.tickMinor,
+                      {transform: [{rotate: `${angle}deg`}, {translateY: -34}]},
+                    ]}
+                  />
+                );
+              })}
+              <Text style={[styles.cardinal, styles.cardinalN]}>K</Text>
+              <Text style={[styles.cardinal, styles.cardinalE]}>D</Text>
+              <Text style={[styles.cardinal, styles.cardinalS]}>G</Text>
+              <Text style={[styles.cardinal, styles.cardinalW]}>B</Text>
+            </View>
+            <View style={styles.centerDot} />
+            <Text style={[styles.compassNeedle, {transform: [{rotate: `${headingToTargetDeg}deg`}]}]}>
+              ↑
+            </Text>
+            <View style={styles.fixedTopMarker} />
+          </View>
+        </View>
+      </View>
+
+      {/* Map Card */}
+      <View style={styles.mapCard}>
+        <View style={styles.mapRotateLayer}>
+          <ImageBackground
+            source={require('../../assets/floorplans/screen_kat0.png')}
+            resizeMode="contain"
+            style={styles.mapImage}
+            imageStyle={styles.mapImageInner}
+            onLayout={onMapLayout}>
+            {!!pin && (
+              <View
+                style={[
+                  styles.pin,
+                  {
+                    left: pin.left - 12,
+                    top: pin.top - 28,
+                  },
+                ]}
+              />
+            )}
+          </ImageBackground>
+        </View>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {flex: 1, backgroundColor: '#0b2f45'},
-  container: {flex: 1, padding: 12, gap: 10},
-  topBanner: {
-    backgroundColor: 'rgba(20,35,40,0.95)',
-    borderRadius: 18,
-    padding: 12,
+  container: {
+    flex: 1, 
+    padding: 16, 
+    gap: 16,
+    backgroundColor: '#F8FAFC',
+  },
+  bannerCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
-  bannerIcon: {color: '#fff', fontSize: 26, fontWeight: '800'},
-  bannerTextWrap: {flex: 1},
-  bannerTitle: {color: '#fff', fontSize: 17, fontWeight: '800'},
-  bannerSub: {color: '#d6e5ec', fontSize: 13, marginTop: 2},
-  infoLayer: {flexDirection: 'row', alignItems: 'center', gap: 10},
+  bannerIconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  bannerIcon: {
+    color: '#2563EB',
+    fontSize: 32,
+    fontWeight: '800',
+  },
+  bannerTextWrap: {
+    flex: 1,
+  },
+  bannerTitle: {
+    color: '#0F172A',
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  bannerSub: {
+    color: '#64748B',
+    fontSize: 14,
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  infoLayer: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  statsContainer: {
+    flex: 1,
+    gap: 12,
+  },
+  statCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  statIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#DBEAFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  statIcon: {
+    fontSize: 16,
+  },
+  statLabel: {
+    color: '#94A3B8',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  statValueBlue: {
+    color: '#0EA5E9',
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  statValueGreen: {
+    color: '#10B981',
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  statUnit: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  compassCard: {
+    width: 100,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    padding: 8,
+  },
   compassFace: {
-    width: 104,
-    height: 104,
-    borderRadius: 999,
-    backgroundColor: '#0b0f16',
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   compassDial: {
-    width: 104,
-    height: 104,
-    borderRadius: 999,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
   },
   tick: {
     position: 'absolute',
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#CBD5E1',
     borderRadius: 1,
   },
   tickMajor: {
     width: 2,
-    height: 12,
+    height: 8,
+    backgroundColor: '#94A3B8',
   },
   tickNorth: {
     width: 3,
-    height: 18,
-    backgroundColor: '#ef4444',
+    height: 10,
+    backgroundColor: '#EF4444',
   },
   tickMinor: {
     width: 1,
-    height: 6,
+    height: 4,
   },
   cardinal: {
     position: 'absolute',
-    color: '#f8fafc',
+    color: '#64748B',
     fontWeight: '800',
-    fontSize: 11,
+    fontSize: 10,
     zIndex: 30,
-    elevation: 30,
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: {width: 0, height: 1},
-    textShadowRadius: 1,
   },
   cardinalN: {
-    top: 16,
-    color: '#ef4444',
+    top: 10,
+    color: '#EF4444',
   },
   cardinalE: {
-    right: 16,
-    top: 46,
+    right: 10,
+    top: 36,
   },
   cardinalS: {
-    bottom: 16,
+    bottom: 10,
   },
   cardinalW: {
-    left: 16,
-    top: 46,
-  },
-  crossH: {
-    position: 'absolute',
-    width: 18,
-    height: 1,
-    backgroundColor: '#e5e7eb',
-    opacity: 0.85,
-  },
-  crossV: {
-    position: 'absolute',
-    width: 1,
-    height: 18,
-    backgroundColor: '#e5e7eb',
-    opacity: 0.85,
+    left: 10,
+    top: 36,
   },
   centerDot: {
     position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: '#cbd5e1',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#94A3B8',
   },
   compassNeedle: {
     position: 'absolute',
-    color: '#ef4444',
-    fontSize: 34,
+    color: '#3B82F6',
+    fontSize: 28,
     fontWeight: '900',
-    lineHeight: 36,
-    textShadowColor: 'rgba(0,0,0,0.45)',
-    textShadowOffset: {width: 0, height: 1},
-    textShadowRadius: 2,
+    lineHeight: 30,
+    textShadowColor: 'rgba(59, 130, 246, 0.3)',
+    textShadowOffset: {width: 0, height: 2},
+    textShadowRadius: 4,
   },
   fixedTopMarker: {
     position: 'absolute',
-    top: -2,
-    width: 3,
-    height: 18,
+    top: -4,
+    width: 4,
+    height: 12,
     borderRadius: 2,
-    backgroundColor: '#f8fafc',
-  },
-  bottomStats: {flex: 1, flexDirection: 'row', gap: 10},
-  statCard: {
-    flex: 1,
-    minHeight: 72,
-    borderRadius: 12,
-    backgroundColor: '#0f2542',
+    backgroundColor: '#3B82F6',
     borderWidth: 1,
-    borderColor: '#274d79',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  statBigBlue: {color: '#5aa3ff', fontSize: 26, fontWeight: '800'},
-  statBigGreen: {color: '#34d399', fontSize: 26, fontWeight: '800'},
-  statLabelRow: {flexDirection: 'row', alignItems: 'center', gap: 5},
-  statIcon: {fontSize: 12},
-  statLabel: {color: '#8ea9c5', fontSize: 11, fontWeight: '700'},
-  rightCompassWrap: {
-    width: 112,
-    height: 112,
-    borderRadius: 14,
-    backgroundColor: '#081321',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: '#FFFFFF',
   },
   mapCard: {
     flex: 1,
-    minHeight: 320,
+    minHeight: 280,
     width: '100%',
-    backgroundColor: '#e5eef4',
-    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 3,
     borderWidth: 1,
-    borderColor: '#88a8bb',
-    padding: 6,
+    borderColor: '#F1F5F9',
     overflow: 'hidden',
   },
   mapImage: {
@@ -351,42 +417,26 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   mapImageInner: {
-    borderRadius: 10,
+    borderRadius: 12,
   },
   mapRotateLayer: {
     width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
   pin: {
     position: 'absolute',
-    width: 20,
-    height: 20,
-    borderRadius: 999,
-    backgroundColor: '#0ea5e9',
-    borderWidth: 3,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
-    shadowOffset: {width: 0, height: 3},
-    elevation: 5,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#3B82F6',
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    shadowColor: '#3B82F6',
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: {width: 0, height: 4},
+    elevation: 6,
   },
-  row: {gap: 10},
-  primary: {
-    backgroundColor: '#0a74ff',
-    paddingVertical: 11,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  primaryText: {color: '#fff', fontWeight: '700'},
-  secondary: {
-    backgroundColor: '#0f3d56',
-    borderWidth: 1,
-    borderColor: '#55839a',
-    paddingVertical: 11,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  secondaryText: {color: '#e4f1f7', fontWeight: '700'},
 });

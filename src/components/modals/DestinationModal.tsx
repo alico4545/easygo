@@ -55,47 +55,65 @@ export function DestinationModal({
   }, [destinations, hasMinChars, normalizedQuery]);
 
   return (
-    <BaseModal visible={visible} title="Hedef Seç" onClose={onClose}>
+    <BaseModal visible={visible} title="Hedef Belirle" onClose={onClose}>
       <Text style={styles.helper}>
-        Gitmek istediğiniz yeri yazın. Örn: <Text style={styles.helperBold}>Müd.</Text>
+        Gitmek istediğiniz noktayı arayın. Örn: <Text style={styles.helperBold}>Öğretmenler</Text>
       </Text>
-      <TextInput
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Hedef adı yazın..."
-        placeholderTextColor="#94a3b8"
-        autoCapitalize="none"
-        autoCorrect={false}
-        spellCheck={false}
-        keyboardType="default"
-        inputMode="text"
-        style={styles.input}
-      />
+      
+      <View style={styles.inputContainer}>
+        <Text style={styles.searchIcon}>🔍</Text>
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Hedef adı yazın..."
+          placeholderTextColor="#94A3B8"
+          autoCapitalize="none"
+          autoCorrect={false}
+          spellCheck={false}
+          keyboardType="default"
+          inputMode="text"
+          style={styles.input}
+        />
+        {query.length > 0 && (
+          <Pressable onPress={() => setQuery('')} style={styles.clearButton}>
+            <Text style={styles.clearIcon}>✕</Text>
+          </Pressable>
+        )}
+      </View>
 
       {!normalizedQuery ? (
         <View style={styles.emptyWrap}>
-          <Text style={styles.emptyText}>Aramak için en az 3 harf yazın.</Text>
+          <View style={styles.emptyIconBox}><Text style={styles.emptyIconText}>🎯</Text></View>
+          <Text style={styles.emptyText}>Aramak için en az 3 harf yazın</Text>
         </View>
       ) : !hasMinChars ? (
         <View style={styles.emptyWrap}>
-          <Text style={styles.emptyText}>Lütfen en az 3 harf girin.</Text>
+          <View style={styles.emptyIconBox}><Text style={styles.emptyIconText}>⏳</Text></View>
+          <Text style={styles.emptyText}>Sonuçlar için yazmaya devam edin...</Text>
         </View>
       ) : filtered.length === 0 ? (
         <View style={styles.emptyWrap}>
-          <Text style={styles.emptyText}>Eşleşen hedef bulunamadı.</Text>
+          <View style={styles.emptyIconBox}><Text style={styles.emptyIconText}>👀</Text></View>
+          <Text style={styles.emptyText}>Eşleşen hedef bulunamadı</Text>
         </View>
       ) : (
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.list}>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
           {filtered.map(item => (
             <Pressable
               key={item.id}
-              style={styles.item}
+              style={({pressed}) => [styles.item, pressed && styles.itemPressed]}
               onPress={() => {
                 onSelectDestination(item.id);
                 setQuery('');
               }}>
-              <Text style={styles.title}>{item.name}</Text>
-              <Text style={styles.sub}>Kat: {item.floor}</Text>
+              <View style={styles.itemIconBox}>
+                <Text style={styles.itemIconText}>{item.name.charAt(0).toUpperCase()}</Text>
+              </View>
+              <View style={styles.itemTextContent}>
+                <Text style={styles.title}>{item.name}</Text>
+                <Text style={styles.sub}>Bulunduğu Kat: {item.floor}</Text>
+              </View>
+              <Text style={styles.chevron}>›</Text>
             </Pressable>
           ))}
         </ScrollView>
@@ -106,47 +124,124 @@ export function DestinationModal({
 
 const styles = StyleSheet.create({
   helper: {
-    color: '#475569',
-    fontSize: 13,
-    marginBottom: 8,
+    color: '#64748B',
+    fontSize: 14,
+    marginBottom: 16,
   },
   helperBold: {
     fontWeight: '700',
-    color: '#0f172a',
+    color: '#0F172A',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  searchIcon: {
+    fontSize: 18,
+    marginRight: 12,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: '#0f172a',
-    marginBottom: 8,
-  },
-  emptyWrap: {
+    flex: 1,
     paddingVertical: 14,
+    fontSize: 16,
+    color: '#0F172A',
+    fontWeight: '500',
   },
-  emptyText: {
-    fontSize: 13,
-    color: '#64748b',
+  clearButton: {
+    padding: 6,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 12,
   },
-  list: {gap: 8, paddingBottom: 4},
-  scroll: {maxHeight: 320},
-  item: {
-    borderWidth: 1,
-    borderColor: '#dbe4ef',
-    borderRadius: 10,
-    padding: 10,
-  },
-  title: {
-    fontSize: 14,
-    color: '#0f172a',
-    fontWeight: '700',
-  },
-  sub: {
+  clearIcon: {
     fontSize: 12,
     color: '#475569',
-    marginTop: 2,
+    fontWeight: '700',
+  },
+  emptyWrap: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyIconBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyIconText: {
+    fontSize: 32,
+  },
+  emptyText: {
+    fontSize: 15,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  list: {
+    gap: 12,
+    paddingBottom: 20,
+  },
+  scroll: {
+    maxHeight: 380,
+  },
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  itemPressed: {
+    backgroundColor: '#F8FAFC',
+    transform: [{ scale: 0.99 }],
+  },
+  itemIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#DBEAFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  itemIconText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E40AF',
+  },
+  itemTextContent: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 16,
+    color: '#0F172A',
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  sub: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  chevron: {
+    fontSize: 24,
+    color: '#CBD5E1',
+    fontWeight: '300',
+    marginLeft: 8,
   },
 });

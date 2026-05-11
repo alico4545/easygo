@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   SafeAreaView,
@@ -7,7 +7,24 @@ import {
   StyleSheet,
   Text,
   View,
+  LayoutAnimation,
+  UIManager,
+  Platform,
+  Modal,
+  TouchableOpacity,
+  Animated,
+  Dimensions,
+  Image,
 } from 'react-native';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import {
   DestinationModal,
   FloorPlanUploadModal,
@@ -21,13 +38,13 @@ import {
   KAT0_DESTINATION_IDS,
   KAT0_QR_NODE_IDS,
 } from './src/data/floorplans';
-import {findShortestRoute} from './src/services/pathfinding';
+import { findShortestRoute } from './src/services/pathfinding';
 import {
   checkCorePermissions,
   hasRequiredPermissions,
   requestCorePermissions,
 } from './src/services/permissions';
-import {addManualFloorPlanAsset, getFloorPlanAssets} from './src/services/floorPlanRegistry';
+import { addManualFloorPlanAsset, getFloorPlanAssets } from './src/services/floorPlanRegistry';
 import {
   angleDeltaSigned,
   bearingFromPixels,
@@ -35,13 +52,13 @@ import {
   startCompass,
   turnInstruction,
 } from './src/services/compass';
-import {startStepCounter, StepCounterHandle} from './src/services/stepCounter';
-import {NavigationSessionScreen, SplashScreen} from './src/screens';
-import {BuildingNode, RouteResult} from './src/types/navigation';
+import { startStepCounter, StepCounterHandle } from './src/services/stepCounter';
+import { NavigationSessionScreen, SplashScreen } from './src/screens';
+import { BuildingNode, RouteResult } from './src/types/navigation';
 
-const POI_PIN_OVERRIDES: Record<string, {xPx: number; yPx: number}> = {
+const POI_PIN_OVERRIDES: Record<string, { xPx: number; yPx: number }> = {
   // Mudur Yardimcisi Odasi 1 kapisi (koridor tarafi)
-  P02: {xPx: 2310, yPx: 705},
+  P02: { xPx: 2310, yPx: 705 },
 };
 
 const buildRouteViaCheckpoints = (
@@ -145,7 +162,44 @@ function App() {
   const [showDestinationModal, setShowDestinationModal] = useState(false);
   const [showFloorPlanModal, setShowFloorPlanModal] = useState(false);
   const [showWrongDirectionModal, setShowWrongDirectionModal] = useState(false);
+  const [showHamburgerMenu, setShowHamburgerMenu] = useState(false);
   const [activeScreen, setActiveScreen] = useState<'home' | 'navigation'>('home');
+
+  const drawerAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
+  const overlayAnim = useRef(new Animated.Value(0)).current;
+
+  const openDrawer = () => {
+    setShowHamburgerMenu(true);
+    Animated.parallel([
+      Animated.timing(drawerAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(overlayAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const closeDrawer = () => {
+    Animated.parallel([
+      Animated.timing(drawerAnim, {
+        toValue: SCREEN_WIDTH,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(overlayAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowHamburgerMenu(false);
+    });
+  };
 
   const [permissionsReady, setPermissionsReady] = useState(false);
   const [currentNodeId, setCurrentNodeId] = useState<string | null>(null);
@@ -252,7 +306,7 @@ function App() {
       {},
     );
     const edgesByKey = KAT0_BUILDING_MAP.edges.reduce<
-      Record<string, {from: string; to: string; steps: number; instruction: string}>
+      Record<string, { from: string; to: string; steps: number; instruction: string }>
     >((acc, edge) => {
       acc[`${edge.from}->${edge.to}`] = edge;
       const reverseTargetName = nodesById[edge.from]?.name ?? edge.from;
@@ -394,7 +448,7 @@ function App() {
       const result =
         forcedCheckpoints && forcedCheckpoints.length > 0
           ? buildRouteViaCheckpoints(currentNodeId, destinationNodeId, forcedCheckpoints) ??
-            findShortestRoute(KAT0_BUILDING_MAP, currentNodeId, destinationNodeId)
+          findShortestRoute(KAT0_BUILDING_MAP, currentNodeId, destinationNodeId)
           : findShortestRoute(KAT0_BUILDING_MAP, currentNodeId, destinationNodeId);
 
       setRoute(result);
@@ -457,7 +511,7 @@ function App() {
           continue;
         }
         hasHizmetli = true;
-        result.push({...item, name: 'Hizmetli Odası'});
+        result.push({ ...item, name: 'Hizmetli Odası' });
         continue;
       }
       result.push(item);
@@ -469,8 +523,8 @@ function App() {
   );
 
   const nodeCoordMap = useMemo(() => {
-    return KAT0_DATASET.nodes.reduce<Record<string, {xPx: number; yPx: number}>>((acc, node) => {
-      acc[node.id] = {xPx: node.xPx, yPx: node.yPx};
+    return KAT0_DATASET.nodes.reduce<Record<string, { xPx: number; yPx: number }>>((acc, node) => {
+      acc[node.id] = { xPx: node.xPx, yPx: node.yPx };
       return acc;
     }, {});
   }, []);
@@ -632,9 +686,25 @@ function App() {
     return <SplashScreen />;
   }
 
-  if (activeScreen === 'navigation' && route) {
-    return (
-      <>
+  return (
+    <SafeAreaView style={styles.safe}>
+      <Image
+        source={require('./assets/floorplans/katplan_prof.png')}
+        style={styles.appBackgroundImage}
+        resizeMode="cover"
+      />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.headerTitle}>EasyGo</Text>
+          <Text style={styles.headerSubtitle}>İç Mekan Navigasyon</Text>
+        </View>
+        <TouchableOpacity style={styles.hamburgerButton} onPress={openDrawer}>
+          <Text style={styles.hamburgerIcon}>☰</Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeScreen === 'navigation' && route ? (
         <NavigationSessionScreen
           route={route}
           progressSteps={routeProgressSteps}
@@ -662,157 +732,141 @@ function App() {
             }
           }}
         />
-        <WrongDirectionModal
-          visible={showWrongDirectionModal}
-          wrongSteps={wrongDirectionStreak}
-          onClose={() => {
-            setShowWrongDirectionModal(false);
-            setWrongDirectionStreak(0);
-            wrongDirectionPromptedRef.current = false;
-          }}
-          onRecalibrate={() => {
-            setShowWrongDirectionModal(false);
-            setShowQRModal(true);
-            wrongDirectionPromptedRef.current = false;
-          }}
-        />
-        <QRStartModal
-          visible={showQRModal}
-          onClose={() => setShowQRModal(false)}
-          nodes={qrStartOptions}
-          onSelectNode={id => {
-            setCurrentNodeId(id);
-            setDeviationScore(0);
-            setWrongDirectionStreak(0);
-            setQrRecalibrationReason(null);
-            wrongDirectionPromptedRef.current = false;
-            setShowQRModal(false);
-          }}
-        />
-      </>
-    );
-  }
+      ) : (
+        <ScrollView
+          contentContainerStyle={[
+            styles.container,
+            !currentNodeId && { flexGrow: 1, justifyContent: 'center' }
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
 
-  return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" />
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>EasyGo İç Mekan Navigasyon (MVP)</Text>
-        <Text style={styles.subtitle}>
-          QR + Bina Krokisi + Nokta/Rota + Adım Algılama
-        </Text>
-        <Text style={styles.subtitle}>
-          Aktif Plan: {KAT0_BUILDING_MAP.name} • Ölçek: {KAT0_DATASET.scale.source}
-        </Text>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>1) Başlangıç Noktası</Text>
-          {!!qrRecalibrationReason && (
-            <Text style={styles.warning}>QR Uyarisi: {qrRecalibrationReason}</Text>
-          )}
-          <Text style={styles.value}>
-            {currentNode ? `${currentNode.name} (Kat ${currentNode.floor})` : 'Henüz QR okutulmadı'}
-          </Text>
-          <Pressable
-            style={[styles.button, !permissionsReady && styles.buttonDisabled]}
-            onPress={() => setShowQRModal(true)}
-            disabled={!permissionsReady}>
-            <Text style={styles.buttonText}>QR Okut (Demo Simülasyon)</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>2) Hedef ve Rota</Text>
-          <Text style={styles.value}>
-            {destinationNode
-              ? `${selectedDestinationLabel ?? destinationNode.name} (Kat ${destinationNode.floor})`
-              : 'Hedef seçilmedi'}
-          </Text>
-          <Pressable style={styles.button} onPress={() => setShowDestinationModal(true)}>
-            <Text style={styles.buttonText}>Hedef Seç</Text>
-          </Pressable>
-
-          <Text style={styles.routeLabel}>
-            {route
-              ? `Toplam tahmini: ${route.totalSteps} adım`
-              : 'Rota için başlangıç ve hedef seçin'}
-          </Text>
-          {!!route && (
-            <Text style={styles.routeNodes}>
-              Dugum sirasi: {route.nodes.map(n => n.id).join(' -> ')}
-            </Text>
-          )}
-          {!!route && selectedDestinationNearNodeId && (
-            <Text style={styles.routeNodes}>
-              Kontrol noktasi: {selectedDestinationNearNodeId}
-              {selectedDestinationOffsetMeters > 0
-                ? ` -> Hedef son ${selectedDestinationOffsetMeters.toFixed(1)} m (~${Math.max(
-                    1,
-                    Math.round(selectedDestinationOffsetMeters / 0.72),
-                  )} adim)`
-                : ' (hedef node)'}
-            </Text>
-          )}
-
-          {!!route &&
-            route.steps.map((step, index) => (
-              <View
-                key={`${step.from}-${step.to}-${index}`}
-                style={[
-                  styles.routeStep,
-                  index === completedInstructionIndex && styles.activeRouteStep,
-                ]}>
-                <Text style={styles.routeText}>{index + 1}. {step.instruction}</Text>
+          {/* Başlangıç Noktası */}
+          <View style={[styles.card, styles.startCard]}>
+            <View style={styles.cardHeader}>
+              <View style={[styles.iconContainer, { backgroundColor: '#DBEAFE' }]}>
+                <Text style={styles.iconText}>📍</Text>
               </View>
-            ))}
-          {!!route && (
-            <Pressable style={styles.button} onPress={() => setActiveScreen('navigation')}>
-              <Text style={styles.buttonText}>Navigasyonu Başlat</Text>
-            </Pressable>
+              <View style={styles.cardHeaderTextContainer}>
+                <Text style={styles.sectionTitle}>Başlangıç Noktası</Text>
+                <Text style={styles.sectionSubtitle}>Mevcut konumunuzu belirleyin</Text>
+              </View>
+            </View>
+
+            <View style={styles.contentRow}>
+              <View style={styles.textColumn}>
+                <Text style={styles.statusLabel}>Konum Durumu</Text>
+                <Text style={[styles.value, !currentNode && styles.valuePlaceholder]}>
+                  {currentNode ? `${currentNode.name}\n(Kat ${currentNode.floor})` : 'Henüz Seçilmedi'}
+                </Text>
+                {!!qrRecalibrationReason && (
+                  <Text style={styles.warning}>⚠️ {qrRecalibrationReason}</Text>
+                )}
+              </View>
+              <View style={styles.actionColumn}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.roundedButton,
+                    styles.primaryButton,
+                    pressed && styles.buttonPressed
+                  ]}
+                  onPress={() => {
+                    if (!permissionsReady) {
+                      setShowPermissionModal(true);
+                      return;
+                    }
+                    setShowQRModal(true);
+                  }}>
+                  <Text style={styles.buttonText}>{currentNode ? 'Değiştir' : 'QR Okut'}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+
+          {/* Hedef ve Rota */}
+          {!!currentNodeId && (
+            <View style={[styles.card, styles.targetCard]}>
+              <View style={styles.cardHeader}>
+                <View style={[styles.iconContainer, { backgroundColor: '#FEF3C7' }]}>
+                  <Text style={styles.iconText}>🎯</Text>
+                </View>
+                <View style={styles.cardHeaderTextContainer}>
+                  <Text style={styles.sectionTitle}>Hedef Seçimi</Text>
+                  <Text style={styles.sectionSubtitle}>Gitmek istediğiniz yeri seçin</Text>
+                </View>
+              </View>
+
+              <View style={styles.contentRow}>
+                <View style={styles.textColumn}>
+                  <Text style={styles.statusLabel}>Hedef Durumu</Text>
+                  <Text style={[styles.value, !destinationNode && styles.valuePlaceholder]}>
+                    {destinationNode
+                      ? `${selectedDestinationLabel ?? destinationNode.name}\n(Kat ${destinationNode.floor})`
+                      : 'Henüz Seçilmedi'}
+                  </Text>
+                  {!!route && (
+                    <Text style={styles.routeHighlight}>
+                      Tahmini: {route.totalSteps} adım
+                    </Text>
+                  )}
+                </View>
+                <View style={styles.actionColumn}>
+                  <Pressable
+                    style={({ pressed }) => [styles.roundedButton, styles.secondaryButton, pressed && styles.buttonPressed]}
+                    onPress={() => {
+                      if (!permissionsReady) {
+                        setShowPermissionModal(true);
+                        return;
+                      }
+                      setShowDestinationModal(true);
+                    }}>
+                    <Text style={styles.secondaryButtonText}>{destinationNode ? 'Değiştir' : 'Hedef Seç'}</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              {!!route && (
+                <View style={styles.routeContainer}>
+                  <Text style={styles.routeTitle}>Rota Adımları</Text>
+                  {route.steps.map((step, index) => (
+                    <View
+                      key={`${step.from}-${step.to}-${index}`}
+                      style={[
+                        styles.routeStep,
+                        index === completedInstructionIndex && styles.activeRouteStep,
+                      ]}>
+                      <View style={[styles.stepDot, index === completedInstructionIndex && styles.activeStepDot]} />
+                      <Text style={[styles.routeText, index === completedInstructionIndex && styles.activeRouteText]}>
+                        {step.instruction}
+                      </Text>
+                    </View>
+                  ))}
+
+                  <Pressable
+                    style={({ pressed }) => [styles.button, styles.actionButton, pressed && styles.buttonPressed]}
+                    onPress={() => {
+                      if (!permissionsReady) {
+                        setShowPermissionModal(true);
+                        return;
+                      }
+                      setActiveScreen('navigation');
+                    }}>
+                    <Text style={styles.buttonText}>Navigasyonu Başlat</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
           )}
-        </View>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>3) Adım Takibi (Sensör)</Text>
-          <Text style={styles.value}>Sensörden okunan adım: {sensorSteps}</Text>
-          <Text style={styles.value}>Rota boyunca adım: {routeProgressSteps}</Text>
-          <Text style={styles.value}>Ters yon serisi: {wrongDirectionStreak}</Text>
-          <Text style={styles.value}>Sapma skoru: {deviationScore}</Text>
-          <Pressable
-            style={[styles.button, styles.secondaryButton]}
-            onPress={() => {
-              setSensorSteps(0);
-              setRouteProgressSteps(0);
-              setWrongDirectionStreak(0);
-              setDeviationScore(0);
-              setQrRecalibrationReason(null);
-              wrongDirectionPromptedRef.current = false;
-            }}>
-            <Text style={styles.secondaryButtonText}>Adımları Sıfırla</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>4) Kat Planı Kayıt Modülü</Text>
-          <Text style={styles.helper}>
-            Sonraki aşamada PNG/PDF dosya seçici buraya bağlanacak.
-          </Text>
-          <Pressable style={styles.button} onPress={() => setShowFloorPlanModal(true)}>
-            <Text style={styles.buttonText}>Plan Ekle (Demo)</Text>
-          </Pressable>
-          {floorPlans.map(asset => (
-            <Text key={asset.id} style={styles.assetItem}>
-              Kat {asset.floor} • {asset.fileName} • {asset.source}
-            </Text>
-          ))}
-        </View>
-
-        {!permissionsReady && (
-          <Text style={styles.warning}>
-            İzin verilmediği sürece QR ve adım sayar modülü pasif kalır.
-          </Text>
-        )}
-      </ScrollView>
+          {!permissionsReady && (
+            <View style={styles.permissionWarning}>
+              <Text style={styles.permissionWarningText}>
+                ⚠️ İzin verilmediği için navigasyon özellikleri devre dışı.
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
 
       <PermissionModal
         visible={showPermissionModal}
@@ -820,11 +874,31 @@ function App() {
         onRequestPermissions={requestPermissions}
       />
 
+      <WrongDirectionModal
+        visible={showWrongDirectionModal}
+        wrongSteps={wrongDirectionStreak}
+        onClose={() => {
+          setShowWrongDirectionModal(false);
+          setWrongDirectionStreak(0);
+          wrongDirectionPromptedRef.current = false;
+        }}
+        onRecalibrate={() => {
+          setShowWrongDirectionModal(false);
+          if (!permissionsReady) {
+            setShowPermissionModal(true);
+          } else {
+            setShowQRModal(true);
+          }
+          wrongDirectionPromptedRef.current = false;
+        }}
+      />
+
       <QRStartModal
         visible={showQRModal}
         onClose={() => setShowQRModal(false)}
         nodes={qrStartOptions}
         onSelectNode={id => {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
           setCurrentNodeId(id);
           setDeviationScore(0);
           setWrongDirectionStreak(0);
@@ -864,6 +938,71 @@ function App() {
           setFloorPlans(getFloorPlanAssets());
         }}
       />
+
+      {/* Hamburger Drawer Overlay */}
+      {showHamburgerMenu && (
+        <Animated.View style={[styles.drawerOverlay, { opacity: overlayAnim }]}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={closeDrawer}
+          />
+        </Animated.View>
+      )}
+
+      {/* Hamburger Drawer Menu */}
+      <Animated.View style={[styles.drawerContainer, { transform: [{ translateX: drawerAnim }] }]}>
+        <SafeAreaView style={styles.drawerSafeArea}>
+          <View style={styles.drawerHeader}>
+            <Text style={styles.drawerTitle}>Menü</Text>
+            <TouchableOpacity onPress={closeDrawer} style={styles.drawerCloseButton}>
+              <Text style={styles.closeIcon}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.drawerContent}>
+            <TouchableOpacity
+              style={styles.drawerItem}
+              onPress={() => {
+                closeDrawer();
+                setActiveScreen('home');
+              }}
+            >
+              <View style={styles.drawerIconBox}>
+                <Text style={styles.drawerItemIcon}>🏠</Text>
+              </View>
+              <Text style={styles.drawerItemText}>Anasayfa</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.drawerItem}
+              onPress={() => {
+                closeDrawer();
+                setTimeout(() => setShowFloorPlanModal(true), 300);
+              }}
+            >
+              <View style={styles.drawerIconBox}>
+                <Text style={styles.drawerItemIcon}>🗺️</Text>
+              </View>
+              <Text style={styles.drawerItemText}>Kat Planı Ekle</Text>
+            </TouchableOpacity>
+
+            {activeScreen === 'navigation' && (
+              <TouchableOpacity
+                style={[styles.drawerItem, {marginTop: 20, borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 20}]}
+                onPress={() => {
+                  closeDrawer();
+                  setActiveScreen('home');
+                }}
+              >
+                <View style={[styles.drawerIconBox, {backgroundColor: '#FEE2E2'}]}>
+                  <Text style={styles.drawerItemIcon}>⏹️</Text>
+                </View>
+                <Text style={[styles.drawerItemText, {color: '#EF4444'}]}>Navigasyonu Bitir</Text>
+              </TouchableOpacity>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -871,97 +1010,377 @@ function App() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#eef4f6',
+    backgroundColor: '#F8FAFC',
+  },
+  appBackgroundImage: {
+    position: 'absolute',
+    top: 0,
+    left: -50,
+    bottom: 0,
+    right: 0,
+    opacity: 0.05,
+    width: '140%',
+    height: '140%',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'ios' ? 16 : 40,
+    paddingBottom: 12,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#64748B',
+    marginTop: 2,
   },
   container: {
-    padding: 16,
-    gap: 12,
-    paddingBottom: 42,
+    padding: 20,
+    gap: 20,
+    paddingBottom: 40,
   },
-  title: {
-    fontSize: 21,
-    fontWeight: '800',
-    color: '#0f172a',
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  subtitle: {
-    color: '#334155',
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  card: {
-    backgroundColor: '#ffffff',
+  iconContainer: {
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#dbe4ef',
-    padding: 12,
-    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  iconText: {
+    fontSize: 20,
+  },
+  cardHeaderTextContainer: {
+    flex: 1,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#0f172a',
+    color: '#0F172A',
+    letterSpacing: -0.3,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  infoBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   value: {
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: '500',
     color: '#334155',
   },
+  warning: {
+    color: '#DC2626',
+    fontSize: 13,
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  routeHighlight: {
+    color: '#0EA5E9',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 6,
+  },
   button: {
-    backgroundColor: '#1f6feb',
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  buttonPressed: {
+    transform: [{ scale: 0.98 }],
+    opacity: 0.9,
   },
   buttonDisabled: {
     opacity: 0.5,
   },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-  routeLabel: {
-    color: '#0f172a',
-    fontSize: 13,
-    marginTop: 4,
-  },
-  routeNodes: {
-    color: '#475569',
-    fontSize: 12,
-  },
-  routeStep: {
-    borderWidth: 1,
-    borderColor: '#dbe4ef',
-    borderRadius: 10,
-    padding: 8,
-  },
-  activeRouteStep: {
-    borderColor: '#0ea5a5',
-    backgroundColor: '#ecfeff',
-  },
-  routeText: {
-    fontSize: 13,
-    color: '#1e293b',
+  primaryButton: {
+    backgroundColor: '#0F172A',
   },
   secondaryButton: {
-    backgroundColor: '#f1f5f9',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
+    backgroundColor: '#F1F5F9',
+  },
+  actionButton: {
+    backgroundColor: '#0EA5E9',
+    marginTop: 16,
+  },
+  outlineButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
   },
   secondaryButtonText: {
-    color: '#0f172a',
-    fontWeight: '700',
+    color: '#0F172A',
+    fontWeight: '600',
+    fontSize: 15,
   },
-  helper: {
-    fontSize: 13,
+  outlineButtonText: {
     color: '#475569',
+    fontWeight: '600',
+    fontSize: 15,
   },
-  assetItem: {
-    fontSize: 12,
+  routeContainer: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  routeTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  routeStep: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  activeRouteStep: {
+    backgroundColor: '#F0F9FF',
+  },
+  stepDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#CBD5E1',
+    marginRight: 12,
+  },
+  activeStepDot: {
+    backgroundColor: '#0EA5E9',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  routeText: {
+    fontSize: 14,
+    color: '#475569',
+    flex: 1,
+    fontWeight: '500',
+  },
+  activeRouteText: {
+    color: '#0369A1',
+    fontWeight: '600',
+  },
+  assetList: {
+    marginBottom: 16,
+    gap: 8,
+  },
+  assetItemCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  assetItemTitle: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#334155',
   },
-  warning: {
-    color: '#b45309',
-    fontSize: 12,
+  assetItemSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
   },
+  permissionWarning: {
+    backgroundColor: '#FEF2F2',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    marginTop: 8,
+  },
+  permissionWarningText: {
+    color: '#B91C1C',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  hamburgerButton: {
+    padding: 8,
+  },
+  hamburgerIcon: {
+    fontSize: 28,
+    color: '#0F172A',
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  startCard: {
+    borderWidth: 1,
+    borderColor: '#E0F2FE',
+    backgroundColor: '#FAFAF9',
+  },
+  targetCard: {
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+    backgroundColor: '#FFFCF5',
+  },
+  contentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  textColumn: {
+    flex: 1,
+    marginRight: 12,
+  },
+  actionColumn: {
+    justifyContent: 'center',
+  },
+  statusLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  valuePlaceholder: {
+    color: '#94A3B8',
+    fontStyle: 'italic',
+  },
+  roundedButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  drawerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    zIndex: 998,
+  },
+  drawerContainer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    right: 0,
+    width: 280,
+    backgroundColor: '#FFFFFF',
+    zIndex: 999,
+    shadowColor: '#000',
+    shadowOffset: { width: -5, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 20,
+    borderTopLeftRadius: 24,
+    borderBottomLeftRadius: 24,
+  },
+  drawerSafeArea: {
+    flex: 1,
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  drawerTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  drawerCloseButton: {
+    padding: 4,
+  },
+  closeIcon: {
+    fontSize: 24,
+    color: '#64748B',
+  },
+  drawerContent: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  drawerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
+  },
+  drawerIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  drawerItemIcon: {
+    fontSize: 18,
+  },
+  drawerItemText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#334155',
+  }
 });
 
 export default App;

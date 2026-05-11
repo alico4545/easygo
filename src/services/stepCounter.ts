@@ -8,24 +8,35 @@ export type StepCounterHandle = {
   stop: () => void;
 };
 
-const STEP_THRESHOLD = 1.15;
-const STEP_DEBOUNCE_MS = 360;
+const STEP_THRESHOLD = 0.75;
+const STEP_DEBOUNCE_MS = 300;
+const GRAVITY_ALPHA = 0.90;
 
 export const startStepCounter = ({onStep}: StepCounterCallbacks): StepCounterHandle => {
   let lastStepTimestamp = 0;
-  let previousMagnitude = 0;
+  let previousLinear = 0;
+  let gravity = 9.81;
+  let armed = true;
 
-  setUpdateIntervalForType(SensorTypes.accelerometer, 120);
+  setUpdateIntervalForType(SensorTypes.accelerometer, 80);
 
   const subscription = accelerometer.subscribe(({x, y, z}) => {
     const magnitude = Math.sqrt(x * x + y * y + z * z);
-    const delta = Math.abs(magnitude - previousMagnitude);
-    previousMagnitude = magnitude;
+    gravity = GRAVITY_ALPHA * gravity + (1 - GRAVITY_ALPHA) * magnitude;
+    const linear = magnitude - gravity;
+    const delta = linear - previousLinear;
+    previousLinear = linear;
 
     const now = Date.now();
-    const shouldCount = delta > STEP_THRESHOLD && now - lastStepTimestamp > STEP_DEBOUNCE_MS;
+    const risingPeak = linear > STEP_THRESHOLD && delta > 0;
+    const rearm = linear < 0.2;
+    if (rearm) {
+      armed = true;
+    }
+    const shouldCount = armed && risingPeak && now - lastStepTimestamp > STEP_DEBOUNCE_MS;
 
     if (shouldCount) {
+      armed = false;
       lastStepTimestamp = now;
       onStep();
     }

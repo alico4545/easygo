@@ -1,6 +1,7 @@
 import React, {PropsWithChildren} from 'react';
 import {
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -17,11 +18,13 @@ export function BaseModal({visible, title, onClose, children}: BaseModalProps) {
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
       <View style={styles.backdrop}>
+        <Pressable style={styles.dismissArea} onPress={onClose} />
         <View style={styles.container}>
+          <View style={styles.dragIndicator} />
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
-            <Pressable onPress={onClose}>
-              <Text style={styles.close}>Kapat</Text>
+            <Pressable onPress={onClose} style={styles.closeButton}>
+              <Text style={styles.closeIcon}>✕</Text>
             </Pressable>
           </View>
           {children}
@@ -34,32 +37,57 @@ export function BaseModal({visible, title, onClose, children}: BaseModalProps) {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(16,20,24,0.55)',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
     justifyContent: 'flex-end',
+  },
+  dismissArea: {
+    flex: 1,
   },
   container: {
     backgroundColor: '#ffffff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingHorizontal: 16,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
     paddingTop: 12,
-    paddingBottom: 24,
-    minHeight: 260,
+    paddingBottom: Platform.OS === 'ios' ? 48 : 56,
+    minHeight: 300,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  dragIndicator: {
+    width: 48,
+    height: 5,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginBottom: 20,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#17212b',
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.5,
   },
-  close: {
-    fontSize: 14,
-    color: '#1f6feb',
-    fontWeight: '600',
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeIcon: {
+    fontSize: 16,
+    color: '#64748B',
+    fontWeight: '700',
   },
 });

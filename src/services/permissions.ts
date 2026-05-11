@@ -41,5 +41,6 @@ export const requestCorePermissions = async (): Promise<AppPermissionState> => {
 
 export const hasRequiredPermissions = (state: AppPermissionState): boolean => {
   const accepted = [RESULTS.GRANTED, RESULTS.LIMITED];
-  return accepted.includes(state.camera) && accepted.includes(state.activity);
+  const activityAccepted = [RESULTS.GRANTED, RESULTS.LIMITED, RESULTS.UNAVAILABLE];
+  return accepted.includes(state.camera) && activityAccepted.includes(state.activity);
 };
