@@ -1,6 +1,6 @@
-import React, {useMemo, useRef, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
-import {Camera, CameraType} from 'react-native-camera-kit';
+import {Camera, useCameraDevice, useCodeScanner} from 'react-native-vision-camera';
 import {BuildingNode} from '../../types/navigation';
 import {BaseModal} from '../common/BaseModal';
 
@@ -18,8 +18,10 @@ export function QRStartModal({
   onSelectNode,
 }: QRStartModalProps) {
   const [scanMessage, setScanMessage] = useState<string | null>(null);
+  const [cameraPermissionGranted, setCameraPermissionGranted] = useState(false);
   const scanLockRef = useRef(false);
   const nodeIdSet = useMemo(() => new Set(nodes.map(n => n.id)), [nodes]);
+  const device = useCameraDevice('back');
 
   const parseNodeIdFromPayload = (raw: string): string | null => {
     const payload = raw.trim();
@@ -39,11 +41,10 @@ export function QRStartModal({
     return null;
   };
 
-  const onReadCode = (event: {nativeEvent: {codeStringValue: string}}) => {
+  const onReadCode = (raw: string) => {
     if (scanLockRef.current) {
       return;
     }
-    const raw = event?.nativeEvent?.codeStringValue ?? '';
     const nodeId = parseNodeIdFromPayload(raw);
     if (!nodeId) {
       setScanMessage('Geçersiz QR. Lütfen EasyGo QR kodu okutun.');
@@ -58,25 +59,57 @@ export function QRStartModal({
     }, 1200);
   };
 
+  useEffect(() => {
+    const ensurePermission = async () => {
+      const status = await Camera.getCameraPermissionStatus();
+      if (status === 'granted') {
+        setCameraPermissionGranted(true);
+        return;
+      }
+
+      const nextStatus = await Camera.requestCameraPermission();
+      setCameraPermissionGranted(nextStatus === 'granted');
+    };
+
+    if (visible) {
+      ensurePermission();
+    }
+  }, [visible]);
+
+  const codeScanner = useCodeScanner({
+    codeTypes: ['qr'],
+    onCodeScanned: codes => {
+      const raw = codes[0]?.value;
+      if (raw) {
+        onReadCode(raw);
+      }
+    },
+  });
+
   return (
     <BaseModal visible={visible} title="QR Başlangıç Noktası" onClose={onClose}>
       <Text style={styles.desc}>
         Kamerayı QR koda tutun. Kod okununca başlangıç noktası otomatik seçilir.
       </Text>
       <View style={styles.cameraWrap}>
-        <Camera
-          style={styles.camera}
-          cameraType={CameraType.Back}
-          zoom={1}
-          maxZoom={1}
-          zoomMode="off"
-          scanBarcode
-          showFrame
-          laserColor="#ef4444"
-          frameColor="#22d3ee"
-          scanThrottleDelay={1200}
-          onReadCode={onReadCode}
-        />
+        {!cameraPermissionGranted ? (
+          <View style={styles.cameraPlaceholder}>
+            <Text style={styles.cameraPlaceholderText}>
+              Kamera izni gerekli. Lütfen izin verip tekrar deneyin.
+            </Text>
+          </View>
+        ) : !device ? (
+          <View style={styles.cameraPlaceholder}>
+            <Text style={styles.cameraPlaceholderText}>Kamera cihazı bulunamadı.</Text>
+          </View>
+        ) : (
+          <Camera
+            style={styles.camera}
+            device={device}
+            isActive={visible}
+            codeScanner={codeScanner}
+          />
+        )}
       </View>
       {!!scanMessage && <Text style={styles.scanMessage}>{scanMessage}</Text>}
       <Text style={styles.fallbackTitle}>QR çalışmazsa elle seç:</Text>
@@ -111,6 +144,17 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1,
+  },
+  cameraPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  cameraPlaceholderText: {
+    color: '#cbd5e1',
+    textAlign: 'center',
+    fontSize: 13,
   },
   scanMessage: {
     marginTop: 8,

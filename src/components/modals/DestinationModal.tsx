@@ -1,5 +1,12 @@
 import React, {useMemo, useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import {BaseModal} from '../common/BaseModal';
 
 type DestinationItem = {
@@ -55,69 +62,78 @@ export function DestinationModal({
   }, [destinations, hasMinChars, normalizedQuery]);
 
   return (
-    <BaseModal visible={visible} title="Hedef Belirle" onClose={onClose}>
-      <Text style={styles.helper}>
-        Gitmek istediğiniz noktayı arayın. Örn: <Text style={styles.helperBold}>Öğretmenler</Text>
-      </Text>
-      
-      <View style={styles.inputContainer}>
-        <Text style={styles.searchIcon}>🔍</Text>
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Hedef adı yazın..."
-          placeholderTextColor="#94A3B8"
-          autoCapitalize="none"
-          autoCorrect={false}
-          spellCheck={false}
-          keyboardType="default"
-          inputMode="text"
-          style={styles.input}
-        />
-        {query.length > 0 && (
-          <Pressable onPress={() => setQuery('')} style={styles.clearButton}>
-            <Text style={styles.clearIcon}>✕</Text>
-          </Pressable>
-        )}
-      </View>
+    <BaseModal visible={visible} title="Hedef Belirle" onClose={onClose} avoidKeyboard>
+      <View style={styles.contentArea}>
+        <Text style={styles.helper}>
+          Gitmek istediğiniz noktayı arayın. Örn: <Text style={styles.helperBold}>Öğretmenler</Text>
+        </Text>
 
-      {!normalizedQuery ? (
-        <View style={styles.emptyWrap}>
-          <View style={styles.emptyIconBox}><Text style={styles.emptyIconText}>🎯</Text></View>
-          <Text style={styles.emptyText}>Aramak için en az 3 harf yazın</Text>
-        </View>
-      ) : !hasMinChars ? (
-        <View style={styles.emptyWrap}>
-          <View style={styles.emptyIconBox}><Text style={styles.emptyIconText}>⏳</Text></View>
-          <Text style={styles.emptyText}>Sonuçlar için yazmaya devam edin...</Text>
-        </View>
-      ) : filtered.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <View style={styles.emptyIconBox}><Text style={styles.emptyIconText}>👀</Text></View>
-          <Text style={styles.emptyText}>Eşleşen hedef bulunamadı</Text>
-        </View>
-      ) : (
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-          {filtered.map(item => (
-            <Pressable
-              key={item.id}
-              style={({pressed}) => [styles.item, pressed && styles.itemPressed]}
-              onPress={() => {
-                onSelectDestination(item.id);
-                setQuery('');
-              }}>
-              <View style={styles.itemIconBox}>
-                <Text style={styles.itemIconText}>{item.name.charAt(0).toUpperCase()}</Text>
-              </View>
-              <View style={styles.itemTextContent}>
-                <Text style={styles.title}>{item.name}</Text>
-                <Text style={styles.sub}>Bulunduğu Kat: {item.floor}</Text>
-              </View>
-              <Text style={styles.chevron}>›</Text>
+        <View style={styles.inputContainer}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Hedef adı yazın..."
+            placeholderTextColor="#94A3B8"
+            autoCapitalize="none"
+            autoCorrect={false}
+            spellCheck={false}
+            keyboardType="default"
+            inputMode="text"
+            style={styles.input}
+          />
+          {query.length > 0 && (
+            <Pressable onPress={() => setQuery('')} style={styles.clearButton}>
+              <Text style={styles.clearIcon}>✕</Text>
             </Pressable>
-          ))}
-        </ScrollView>
-      )}
+          )}
+        </View>
+
+        <View style={styles.resultsContainer}>
+          {!normalizedQuery ? (
+            <View style={styles.emptyWrap}>
+              <View style={styles.emptyIconBox}><Text style={styles.emptyIconText}>🎯</Text></View>
+              <Text style={styles.emptyText}>Aramak için en az 3 harf yazın</Text>
+            </View>
+          ) : !hasMinChars ? (
+            <View style={styles.emptyWrap}>
+              <View style={styles.emptyIconBox}><Text style={styles.emptyIconText}>⏳</Text></View>
+              <Text style={styles.emptyText}>Sonuçlar için yazmaya devam edin...</Text>
+            </View>
+          ) : filtered.length === 0 ? (
+            <View style={styles.emptyWrap}>
+              <View style={styles.emptyIconBox}><Text style={styles.emptyIconText}>👀</Text></View>
+              <Text style={styles.emptyText}>Eşleşen hedef bulunamadı</Text>
+            </View>
+          ) : (
+            <ScrollView
+              style={styles.scroll}
+              contentContainerStyle={styles.list}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag">
+              {filtered.map(item => (
+                <Pressable
+                  key={item.id}
+                  style={({pressed}) => [styles.item, pressed && styles.itemPressed]}
+                  onPress={() => {
+                    onSelectDestination(item.id);
+                    setQuery('');
+                  }}>
+                  <View style={styles.itemIconBox}>
+                    <Text style={styles.itemIconText}>{item.name.charAt(0).toUpperCase()}</Text>
+                  </View>
+                  <View style={styles.itemTextContent}>
+                    <Text style={styles.title}>{item.name}</Text>
+                    <Text style={styles.sub}>Bulunduğu Kat: {item.floor}</Text>
+                  </View>
+                  <Text style={styles.chevron}>›</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      </View>
     </BaseModal>
   );
 }
@@ -127,6 +143,9 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 14,
     marginBottom: 16,
+  },
+  contentArea: {
+    flexShrink: 1,
   },
   helperBold: {
     fontWeight: '700',
@@ -163,6 +182,10 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontWeight: '700',
   },
+  resultsContainer: {
+    flexShrink: 1,
+    minHeight: 140,
+  },
   emptyWrap: {
     paddingVertical: 40,
     alignItems: 'center',
@@ -190,7 +213,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   scroll: {
-    maxHeight: 380,
+    flexShrink: 1,
   },
   item: {
     flexDirection: 'row',
