@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Tts from 'react-native-tts';
 import {
+  Alert,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -16,9 +17,11 @@ import {
   Animated,
   Dimensions,
   Image,
+  Linking,
 } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const DIRECTION_ALIGNMENT_THRESHOLD_DEG = 40;
 
 if (
   Platform.OS === 'android' &&
@@ -230,6 +233,43 @@ function App() {
   const spokenInstructionIndexRef = useRef<number>(-1);
   const arrivalAnnouncementDoneRef = useRef(false);
   const ttsReadyRef = useRef(false);
+  const ttsPromptShownRef = useRef(false);
+
+  const promptEnableTts = useCallback(() => {
+    if (Platform.OS !== 'android' || ttsPromptShownRef.current) {
+      return;
+    }
+    ttsPromptShownRef.current = true;
+    Alert.alert(
+      'Metin Okuma Etkin Değil',
+      'Sesli navigasyon için telefonunuzda metinden sese özelliğini etkinleştirin.',
+      [
+        {text: 'Sonra', style: 'cancel'},
+        {
+          text: 'Etkinleştir',
+          onPress: async () => {
+            try {
+              if (typeof (Tts as any).requestInstallEngine === 'function') {
+                await (Tts as any).requestInstallEngine();
+                return;
+              }
+              if (typeof (Tts as any).requestInstallData === 'function') {
+                await (Tts as any).requestInstallData();
+                return;
+              }
+              if (typeof (Linking as any).sendIntent === 'function') {
+                await (Linking as any).sendIntent('com.android.settings.TTS_SETTINGS');
+              } else {
+                await Linking.openSettings();
+              }
+            } catch (e) {
+              console.warn('TTS enable prompt action failed:', e);
+            }
+          },
+        },
+      ],
+    );
+  }, []);
 
   const speakText = useCallback(async (text: string) => {
     try {
@@ -240,9 +280,10 @@ function App() {
       Tts.stop();
       Tts.speak(text);
     } catch (error) {
+      promptEnableTts();
       console.warn('TTS unavailable:', error);
     }
-  }, []);
+  }, [promptEnableTts]);
 
   const currentNode: BuildingNode | undefined = useMemo(
     () => KAT0_BUILDING_MAP.nodes.find(n => n.id === currentNodeId),
@@ -294,7 +335,7 @@ function App() {
         }
 
         const delta = Math.abs(angleDeltaSigned(headingRef.current, target));
-        const aligned = delta <= 65;
+        const aligned = delta <= DIRECTION_ALIGNMENT_THRESHOLD_DEG;
 
         if (aligned) {
           setRouteProgressSteps(prev => prev + 1);
@@ -344,7 +385,7 @@ function App() {
         from: edge.to,
         to: edge.from,
         steps: edge.steps,
-        instruction: `${reverseTargetName} yonune ilerleyin.`,
+        instruction: `${reverseTargetName} yönüne ilerleyin.`,
       };
       return acc;
     }, {});
@@ -531,6 +572,13 @@ function App() {
     return route.steps.length - 1;
   }, [route, routeProgressSteps]);
 
+  const hasArrived = useMemo(() => {
+    if (!route) {
+      return false;
+    }
+    return routeProgressSteps >= route.totalSteps;
+  }, [route, routeProgressSteps]);
+
   const destinationOptions = useMemo<DestinationOption[]>(() => {
     const poiDestinations = KAT0_DATASET.pois.map(poi => ({
       id: poi.id,
@@ -571,6 +619,9 @@ function App() {
 
   const activeRouteEdge = useMemo(() => {
     if (!route || route.steps.length === 0) {
+      return null;
+    }
+    if (routeProgressSteps >= route.totalSteps) {
       return null;
     }
 
@@ -667,6 +718,9 @@ function App() {
   }, [targetBearingDeg]);
 
   useEffect(() => {
+    if (hasArrived) {
+      return;
+    }
     if (!route) {
       return;
     }
@@ -675,17 +729,21 @@ function App() {
       recalibrationPromptedRef.current = true;
       setShowWrongDirectionModal(true);
       speakText('Yanlış yönde ilerliyorsunuz.');
-      setQrRecalibrationReason('5 adimdir ters yondesiniz.');
+      setQrRecalibrationReason('5 adımdır ters yöndesiniz.');
       return;
     }
     const overflow = routeProgressSteps - route.totalSteps;
-    if (overflow >= 10 && !recalibrationPromptedRef.current) {
+    if (
+      wrongDirectionStreak >= 5 &&
+      overflow >= 10 &&
+      !recalibrationPromptedRef.current &&
+      !wrongDirectionPromptedRef.current
+    ) {
       recalibrationPromptedRef.current = true;
-      setQrRecalibrationReason('Beklenen adim asildi. Konum dogrulamasi gerekiyor.');
+      setQrRecalibrationReason('Beklenen adım aşıldı. Konum doğrulaması gerekiyor.');
       setShowWrongDirectionModal(true);
-      speakText('Yanlış yönde ilerliyorsunuz.');
     }
-  }, [deviationScore, wrongDirectionStreak, route, routeProgressSteps, speakText]);
+  }, [deviationScore, wrongDirectionStreak, route, routeProgressSteps, speakText, hasArrived]);
 
   useEffect(() => {
     if (wrongDirectionStreak === 0) {
@@ -694,6 +752,9 @@ function App() {
   }, [wrongDirectionStreak]);
 
   useEffect(() => {
+    if (hasArrived) {
+      return;
+    }
     if (!route) {
       recalibrationPromptedRef.current = false;
       return;
@@ -702,10 +763,16 @@ function App() {
     if (wrongDirectionStreak === 0 && deviationScore < 3 && overflow < 10) {
       recalibrationPromptedRef.current = false;
     }
-  }, [route, routeProgressSteps, wrongDirectionStreak, deviationScore]);
+  }, [route, routeProgressSteps, wrongDirectionStreak, deviationScore, hasArrived]);
 
   useEffect(() => {
+    if (hasArrived) {
+      return;
+    }
     if (!route || !activeRouteEdge) {
+      return;
+    }
+    if (wrongDirectionStreak < 5 || wrongDirectionPromptedRef.current) {
       return;
     }
     const nextNodeId = activeRouteEdge.to;
@@ -717,10 +784,9 @@ function App() {
     }
     recalibrationPromptedRef.current = true;
     promptedQrNodesRef.current.add(nextNodeId);
-    setQrRecalibrationReason(`Kritik nokta ${nextNodeId} yaklasiliyor. QR ile dogrulama onerilir.`);
+    setQrRecalibrationReason(`Kritik nokta ${nextNodeId} yaklaşılıyor. QR ile doğrulama önerilir.`);
     setShowWrongDirectionModal(true);
-    speakText('Yanlış yönde ilerliyorsunuz.');
-  }, [activeRouteEdge, route, deviationScore, speakText]);
+  }, [activeRouteEdge, route, deviationScore, speakText, hasArrived, wrongDirectionStreak]);
 
   useEffect(() => {
     const setupTts = async () => {
@@ -737,15 +803,19 @@ function App() {
         Tts.setDucking(true);
       } catch (error) {
         ttsReadyRef.current = false;
+        promptEnableTts();
         console.warn('TTS setup skipped:', error);
       }
     };
     setupTts();
-  }, []);
+  }, [promptEnableTts]);
 
   useEffect(() => {
     if (activeScreen !== 'navigation' || !route) {
       spokenInstructionIndexRef.current = -1;
+      return;
+    }
+    if (hasArrived) {
       return;
     }
     if (completedInstructionIndex < 0 || completedInstructionIndex >= route.steps.length) {
@@ -760,7 +830,7 @@ function App() {
     }
     spokenInstructionIndexRef.current = completedInstructionIndex;
     speakText(instruction);
-  }, [activeScreen, route, completedInstructionIndex, speakText]);
+  }, [activeScreen, route, completedInstructionIndex, speakText, hasArrived]);
 
   useEffect(() => {
     if (!route) {
@@ -840,7 +910,7 @@ function App() {
               return;
             }
             const delta = Math.abs(angleDeltaSigned(headingRef.current, target));
-            if (delta <= 65) {
+            if (delta <= DIRECTION_ALIGNMENT_THRESHOLD_DEG) {
               setRouteProgressSteps(prev => prev + 1);
               setWrongDirectionStreak(0);
               setDeviationScore(prev => Math.max(0, prev - 1));
@@ -997,9 +1067,6 @@ function App() {
         wrongSteps={wrongDirectionStreak}
         onClose={() => {
           setShowWrongDirectionModal(false);
-          setWrongDirectionStreak(0);
-          wrongDirectionPromptedRef.current = false;
-          recalibrationPromptedRef.current = false;
         }}
         onRecalibrate={() => {
           setShowWrongDirectionModal(false);
@@ -1008,7 +1075,6 @@ function App() {
           } else {
             setShowQRModal(true);
           }
-          wrongDirectionPromptedRef.current = false;
         }}
       />
 
