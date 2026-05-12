@@ -30,6 +30,7 @@ import {
   FloorPlanUploadModal,
   PermissionModal,
   QRStartModal,
+  ArrivalModal,
   WrongDirectionModal,
 } from './src/components';
 import {
@@ -162,6 +163,7 @@ function App() {
   const [showDestinationModal, setShowDestinationModal] = useState(false);
   const [showFloorPlanModal, setShowFloorPlanModal] = useState(false);
   const [showWrongDirectionModal, setShowWrongDirectionModal] = useState(false);
+  const [showArrivalModal, setShowArrivalModal] = useState(false);
   const [showHamburgerMenu, setShowHamburgerMenu] = useState(false);
   const [activeScreen, setActiveScreen] = useState<'home' | 'navigation'>('home');
 
@@ -219,8 +221,11 @@ function App() {
   const [headingDeg, setHeadingDeg] = useState(0);
   const headingRef = useRef(0);
   const targetBearingRef = useRef<number | null>(null);
+  const stepCounterRef = useRef<StepCounterHandle | null>(null);
   const promptedQrNodesRef = useRef<Set<string>>(new Set());
   const wrongDirectionPromptedRef = useRef(false);
+  const recalibrationPromptedRef = useRef(false);
+  const arrivalPromptedRef = useRef(false);
 
   const currentNode: BuildingNode | undefined = useMemo(
     () => KAT0_BUILDING_MAP.nodes.find(n => n.id === currentNodeId),
@@ -242,46 +247,54 @@ function App() {
   }, []);
 
   useEffect(() => {
-    let stepCounter: StepCounterHandle | null = null;
-
     const bootstrap = async () => {
       const permissionState = await checkCorePermissions();
       const ok = hasRequiredPermissions(permissionState);
       setPermissionsReady(ok);
       setShowPermissionModal(!ok);
-
-      if (ok) {
-        stepCounter = startStepCounter({
-          onStep: () => {
-            setSensorSteps(prev => prev + 1);
-            const target = targetBearingRef.current;
-            if (target === null) {
-              setRouteProgressSteps(prev => prev + 1);
-              return;
-            }
-
-            const delta = Math.abs(angleDeltaSigned(headingRef.current, target));
-            const aligned = delta <= 65;
-
-            if (aligned) {
-              setRouteProgressSteps(prev => prev + 1);
-              setWrongDirectionStreak(0);
-              setDeviationScore(prev => Math.max(0, prev - 1));
-            } else {
-              setWrongDirectionStreak(prev => prev + 1);
-              setDeviationScore(prev => prev + 1);
-            }
-          },
-        });
-      }
     };
 
     bootstrap();
+  }, []);
+
+  useEffect(() => {
+    if (!permissionsReady) {
+      stepCounterRef.current?.stop();
+      stepCounterRef.current = null;
+      return;
+    }
+    if (stepCounterRef.current) {
+      return;
+    }
+
+    stepCounterRef.current = startStepCounter({
+      onStep: () => {
+        setSensorSteps(prev => prev + 1);
+        const target = targetBearingRef.current;
+        if (target === null) {
+          setRouteProgressSteps(prev => prev + 1);
+          return;
+        }
+
+        const delta = Math.abs(angleDeltaSigned(headingRef.current, target));
+        const aligned = delta <= 65;
+
+        if (aligned) {
+          setRouteProgressSteps(prev => prev + 1);
+          setWrongDirectionStreak(0);
+          setDeviationScore(prev => Math.max(0, prev - 1));
+        } else {
+          setWrongDirectionStreak(prev => prev + 1);
+          setDeviationScore(prev => prev + 1);
+        }
+      },
+    });
 
     return () => {
-      stepCounter?.stop();
+      stepCounterRef.current?.stop();
+      stepCounterRef.current = null;
     };
-  }, []);
+  }, [permissionsReady]);
 
   useEffect(() => {
     if (!permissionsReady) {
@@ -437,6 +450,9 @@ function App() {
           setQrRecalibrationReason(null);
           promptedQrNodesRef.current.clear();
           wrongDirectionPromptedRef.current = false;
+          recalibrationPromptedRef.current = false;
+          arrivalPromptedRef.current = false;
+          setShowArrivalModal(false);
           return;
         }
       }
@@ -458,6 +474,9 @@ function App() {
       setQrRecalibrationReason(null);
       promptedQrNodesRef.current.clear();
       wrongDirectionPromptedRef.current = false;
+      recalibrationPromptedRef.current = false;
+      arrivalPromptedRef.current = false;
+      setShowArrivalModal(false);
     }
   }, [
     currentNodeId,
@@ -632,14 +651,16 @@ function App() {
     }
     if (wrongDirectionStreak >= 5 && !wrongDirectionPromptedRef.current) {
       wrongDirectionPromptedRef.current = true;
+      recalibrationPromptedRef.current = true;
       setShowWrongDirectionModal(true);
       setQrRecalibrationReason('5 adimdir ters yondesiniz.');
       return;
     }
     const overflow = routeProgressSteps - route.totalSteps;
-    if (overflow >= 10) {
+    if (overflow >= 10 && !recalibrationPromptedRef.current) {
+      recalibrationPromptedRef.current = true;
       setQrRecalibrationReason('Beklenen adim asildi. Konum dogrulamasi gerekiyor.');
-      setShowQRModal(true);
+      setShowWrongDirectionModal(true);
     }
   }, [deviationScore, wrongDirectionStreak, route, routeProgressSteps]);
 
@@ -650,6 +671,17 @@ function App() {
   }, [wrongDirectionStreak]);
 
   useEffect(() => {
+    if (!route) {
+      recalibrationPromptedRef.current = false;
+      return;
+    }
+    const overflow = routeProgressSteps - route.totalSteps;
+    if (wrongDirectionStreak === 0 && deviationScore < 3 && overflow < 10) {
+      recalibrationPromptedRef.current = false;
+    }
+  }, [route, routeProgressSteps, wrongDirectionStreak, deviationScore]);
+
+  useEffect(() => {
     if (!route || !activeRouteEdge) {
       return;
     }
@@ -657,13 +689,30 @@ function App() {
     if (!KAT0_QR_NODE_IDS.has(nextNodeId) || promptedQrNodesRef.current.has(nextNodeId)) {
       return;
     }
-    if (deviationScore < 3) {
+    if (deviationScore < 3 || recalibrationPromptedRef.current) {
       return;
     }
+    recalibrationPromptedRef.current = true;
     promptedQrNodesRef.current.add(nextNodeId);
     setQrRecalibrationReason(`Kritik nokta ${nextNodeId} yaklasiliyor. QR ile dogrulama onerilir.`);
-    setShowQRModal(true);
+    setShowWrongDirectionModal(true);
   }, [activeRouteEdge, route, deviationScore]);
+
+  useEffect(() => {
+    if (!route) {
+      arrivalPromptedRef.current = false;
+      setShowArrivalModal(false);
+      return;
+    }
+    if (routeProgressSteps < route.totalSteps) {
+      return;
+    }
+    if (arrivalPromptedRef.current) {
+      return;
+    }
+    arrivalPromptedRef.current = true;
+    setShowArrivalModal(true);
+  }, [route, routeProgressSteps]);
 
   const facingHint = useMemo(() => {
     if (targetBearingDeg === null) {
@@ -881,6 +930,7 @@ function App() {
           setShowWrongDirectionModal(false);
           setWrongDirectionStreak(0);
           wrongDirectionPromptedRef.current = false;
+          recalibrationPromptedRef.current = false;
         }}
         onRecalibrate={() => {
           setShowWrongDirectionModal(false);
@@ -904,7 +954,23 @@ function App() {
           setWrongDirectionStreak(0);
           setQrRecalibrationReason(null);
           wrongDirectionPromptedRef.current = false;
+          recalibrationPromptedRef.current = false;
+          arrivalPromptedRef.current = false;
+          setShowArrivalModal(false);
           setShowQRModal(false);
+        }}
+      />
+
+      <ArrivalModal
+        visible={showArrivalModal}
+        onClose={() => setShowArrivalModal(false)}
+        onOpenQR={() => {
+          setShowArrivalModal(false);
+          if (!permissionsReady) {
+            setShowPermissionModal(true);
+            return;
+          }
+          setShowQRModal(true);
         }}
       />
 
