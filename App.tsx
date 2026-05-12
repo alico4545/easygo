@@ -22,8 +22,9 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DIRECTION_ALIGNMENT_THRESHOLD_DEG = 40;
-// kat0_kritik_noktalar.png kuzey oku referansına göre bina +45° döndürülmüş durumda.
-const BUILDING_BEARING_OFFSET_DEG = 45;
+// Pusula kalibrasyonu: kat planı kuzeyi ile manyetik kuzey farkı (derece).
+// N10 -> N5 hattı kuzey doğrultusunda olduğu için varsayılan 0 tutulur.
+const BUILDING_BEARING_OFFSET_DEG = 0;
 
 const normalizeDeg = (value: number): number => {
   const normalized = value % 360;
@@ -177,6 +178,7 @@ function App() {
   const [showArrivalModal, setShowArrivalModal] = useState(false);
   const [showHamburgerMenu, setShowHamburgerMenu] = useState(false);
   const [activeScreen, setActiveScreen] = useState<'home' | 'navigation'>('home');
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
 
   const drawerAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
@@ -279,6 +281,9 @@ function App() {
   }, []);
 
   const speakText = useCallback(async (text: string) => {
+    if (!isVoiceEnabled) {
+      return;
+    }
     try {
       if (!ttsReadyRef.current) {
         await Tts.getInitStatus();
@@ -290,7 +295,7 @@ function App() {
       promptEnableTts();
       console.warn('TTS unavailable:', error);
     }
-  }, [promptEnableTts]);
+  }, [promptEnableTts, isVoiceEnabled]);
 
   const currentNode: BuildingNode | undefined = useMemo(
     () => KAT0_BUILDING_MAP.nodes.find(n => n.id === currentNodeId),
@@ -444,7 +449,7 @@ function App() {
         'N10|P12': ['N10', 'N5'], // Mudur Yrd 2
         'N10|P13': ['N10', 'N5'], // Mudur Yrd 3
         'N10|P14': ['N10'], // Hizmetli Sol
-        'N10|P15': ['N10', 'N5'], // Mudur Odasi
+        'N10|P15': ['N10'], // Mudur Odasi
         'N10|P16': ['N10'], // Mudur Yrd 4
         'N10|P17': ['N10'], // Hizmetli Sag
 
@@ -463,12 +468,12 @@ function App() {
         'N1|P12': ['N1', 'N3', 'N4', 'N5'],
         'N1|P13': ['N1', 'N3', 'N4', 'N5'],
         'N1|P14': ['N1', 'N3', 'N4', 'N5', 'N10'],
-        'N1|P15': ['N1', 'N3', 'N4', 'N5'],
+        'N1|P15': ['N1', 'N3', 'N4', 'N5', 'N10'],
         'N1|P16': ['N1', 'N3', 'N4', 'N5', 'N10'],
         'N1|P17': ['N1', 'N3', 'N4', 'N5', 'N10'],
 
         // N9 (koridor kapisi) -> sabit hedef dizileri
-        'N9|P15': ['N9', 'N11', 'N12', 'N6', 'N5'], // Mudur Odasi
+        'N9|P15': ['N9', 'N11', 'N12', 'N6', 'N5', 'N10'], // Mudur Odasi
       };
 
       const direct = fixedByStartAndOption[`${startNodeId}|${optionId}`];
@@ -563,6 +568,34 @@ function App() {
       setShowPermissionModal(false);
     }
   };
+
+  const resetNavigationState = useCallback(() => {
+    setActiveScreen('home');
+    setRoute(null);
+    setCurrentNodeId(null);
+    setDestinationNodeId(null);
+    setDestinationOptionId(null);
+    setSelectedDestinationLabel(null);
+    setSelectedDestinationNearNodeId(null);
+    setSelectedDestinationOffsetMeters(0);
+    setSensorSteps(0);
+    setRouteProgressSteps(0);
+    setDeviationScore(0);
+    setWrongDirectionStreak(0);
+    setQrRecalibrationReason(null);
+    setShowWrongDirectionModal(false);
+    setShowQRModal(false);
+    setShowArrivalModal(false);
+    setShowDestinationModal(false);
+    setIsVoiceEnabled(true);
+    wrongDirectionPromptedRef.current = false;
+    recalibrationPromptedRef.current = false;
+    promptedQrNodesRef.current.clear();
+    arrivalPromptedRef.current = false;
+    spokenInstructionIndexRef.current = -1;
+    arrivalAnnouncementDoneRef.current = false;
+    Tts.stop();
+  }, []);
 
   const completedInstructionIndex = useMemo(() => {
     if (!route) {
@@ -908,6 +941,16 @@ function App() {
           facingHint={facingHint}
           targetCardinal={targetCardinal}
           pinPosition={pinPosition}
+          isVoiceEnabled={isVoiceEnabled}
+          onToggleVoice={() => {
+            setIsVoiceEnabled(prev => {
+              const next = !prev;
+              if (!next) {
+                Tts.stop();
+              }
+              return next;
+            });
+          }}
           onBack={() => setActiveScreen('home')}
           onManualStep={() => {
             setSensorSteps(prev => prev + 1);
@@ -1105,7 +1148,7 @@ function App() {
 
       <ArrivalModal
         visible={showArrivalModal}
-        onClose={() => setShowArrivalModal(false)}
+        onRestart={resetNavigationState}
         onOpenQR={() => {
           setShowArrivalModal(false);
           if (!permissionsReady) {
@@ -1199,7 +1242,7 @@ function App() {
                 style={[styles.drawerItem, {marginTop: 20, borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 20}]}
                 onPress={() => {
                   closeDrawer();
-                  setActiveScreen('home');
+                  resetNavigationState();
                 }}
               >
                 <View style={[styles.drawerIconBox, {backgroundColor: '#FEE2E2'}]}>

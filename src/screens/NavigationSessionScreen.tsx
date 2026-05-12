@@ -17,6 +17,8 @@ type NavigationSessionScreenProps = {
   facingHint: string;
   targetCardinal: string;
   pinPosition: {xPx: number; yPx: number} | null;
+  isVoiceEnabled: boolean;
+  onToggleVoice: () => void;
   onBack: () => void;
   onManualStep: () => void;
 };
@@ -33,6 +35,8 @@ export function NavigationSessionScreen({
   facingHint,
   targetCardinal,
   pinPosition,
+  isVoiceEnabled,
+  onToggleVoice,
   onBack,
   onManualStep,
 }: NavigationSessionScreenProps) {
@@ -101,6 +105,11 @@ export function NavigationSessionScreen({
           <Text style={styles.bannerTitle}>{facingHint}</Text>
           <Text style={styles.bannerSub}>{activeInstruction}</Text>
         </View>
+        <Pressable
+          style={[styles.voiceToggle, !isVoiceEnabled && styles.voiceToggleOff]}
+          onPress={onToggleVoice}>
+          <Text style={styles.voiceToggleText}>{isVoiceEnabled ? 'Ses: Açık' : 'Ses: Kapalı'}</Text>
+        </Pressable>
       </View>
 
       {/* Info Layer */}
@@ -226,6 +235,24 @@ const styles = StyleSheet.create({
   },
   bannerTextWrap: {
     flex: 1,
+  },
+  voiceToggle: {
+    marginLeft: 10,
+    backgroundColor: '#DBEAFE',
+    borderWidth: 1,
+    borderColor: '#93C5FD',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  voiceToggleOff: {
+    backgroundColor: '#E2E8F0',
+    borderColor: '#CBD5E1',
+  },
+  voiceToggleText: {
+    color: '#1E3A8A',
+    fontWeight: '700',
+    fontSize: 12,
   },
   bannerTitle: {
     color: '#0F172A',

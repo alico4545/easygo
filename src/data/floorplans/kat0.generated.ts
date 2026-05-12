@@ -107,7 +107,7 @@ export const KAT0_DATASET: FloorPlanDataset = {
     {id: 'P12', name: 'Müdür Yardımcısı Odası 2', floor: 0, nearNodeId: 'N5', offsetMeters: 1.0},
     {id: 'P13', name: 'Müdür Yardımcısı Odası 3', floor: 0, nearNodeId: 'N5', offsetMeters: 2.0},
     {id: 'P14', name: 'Hizmetli Odası (Sol)', floor: 0, nearNodeId: 'N10', offsetMeters: 1.1},
-    {id: 'P15', name: 'Müdür Odası', floor: 0, nearNodeId: 'N5', offsetMeters: 1.2},
+    {id: 'P15', name: 'Müdür Odası', floor: 0, nearNodeId: 'N10', offsetMeters: 1.2},
     {id: 'P16', name: 'Müdür Yardımcısı Odası 4', floor: 0, nearNodeId: 'N10', offsetMeters: 1.8},
     {id: 'P17', name: 'Hizmetli Odası (Sağ - Eski Çay Ocağı)', floor: 0, nearNodeId: 'N10', offsetMeters: 0.9},
   ],

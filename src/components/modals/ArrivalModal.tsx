@@ -4,13 +4,13 @@ import {BaseModal} from '../common/BaseModal';
 
 type ArrivalModalProps = {
   visible: boolean;
-  onClose: () => void;
+  onRestart: () => void;
   onOpenQR: () => void;
 };
 
-export function ArrivalModal({visible, onClose, onOpenQR}: ArrivalModalProps) {
+export function ArrivalModal({visible, onRestart, onOpenQR}: ArrivalModalProps) {
   return (
-    <BaseModal visible={visible} title="Hedefe Vardınız" onClose={onClose}>
+    <BaseModal visible={visible} title="Hedefe Vardınız" onClose={onRestart}>
       <View style={styles.badge}>
         <Text style={styles.badgeIcon}>✓</Text>
       </View>
@@ -24,8 +24,8 @@ export function ArrivalModal({visible, onClose, onOpenQR}: ArrivalModalProps) {
         </Text>
       </View>
       <View style={styles.actions}>
-        <Pressable style={styles.secondaryBtn} onPress={onClose}>
-          <Text style={styles.secondaryText}>Kapat</Text>
+        <Pressable style={styles.secondaryBtn} onPress={onRestart}>
+          <Text style={styles.secondaryText}>Yeni Rota Başlat</Text>
         </Pressable>
         <Pressable style={styles.primaryBtn} onPress={onOpenQR}>
           <Text style={styles.primaryText}>QR Oku</Text>
