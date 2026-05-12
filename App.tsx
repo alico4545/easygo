@@ -474,6 +474,12 @@ function App() {
 
         // N9 (koridor kapisi) -> sabit hedef dizileri
         'N9|P15': ['N9', 'N11', 'N12', 'N6', 'N5', 'N10'], // Mudur Odasi
+
+        // Arka koridor / WC Kadin aksi (zigzag'i engellemek icin sabit)
+        'N5|P06': ['N5', 'N6', 'N12', 'N11', 'N9'],
+        'N6|P06': ['N6', 'N12', 'N11', 'N9'],
+        'N12|P06': ['N12', 'N11', 'N9'],
+        'N11|P06': ['N11', 'N9'],
       };
 
       const direct = fixedByStartAndOption[`${startNodeId}|${optionId}`];
