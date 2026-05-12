@@ -8,8 +8,9 @@ export type StepCounterHandle = {
   stop: () => void;
 };
 
-const STEP_THRESHOLD = 0.75;
-const STEP_DEBOUNCE_MS = 300;
+// Daha stabil adim sayimi icin hassasiyet azaltildi.
+const STEP_THRESHOLD = 1.05;
+const STEP_DEBOUNCE_MS = 550;
 const GRAVITY_ALPHA = 0.90;
 
 export const startStepCounter = ({onStep}: StepCounterCallbacks): StepCounterHandle => {
@@ -18,7 +19,7 @@ export const startStepCounter = ({onStep}: StepCounterCallbacks): StepCounterHan
   let gravity = 9.81;
   let armed = true;
 
-  setUpdateIntervalForType(SensorTypes.accelerometer, 80);
+  setUpdateIntervalForType(SensorTypes.accelerometer, 100);
 
   const subscription = accelerometer.subscribe(({x, y, z}) => {
     const magnitude = Math.sqrt(x * x + y * y + z * z);
@@ -29,7 +30,7 @@ export const startStepCounter = ({onStep}: StepCounterCallbacks): StepCounterHan
 
     const now = Date.now();
     const risingPeak = linear > STEP_THRESHOLD && delta > 0;
-    const rearm = linear < 0.2;
+    const rearm = linear < 0.1;
     if (rearm) {
       armed = true;
     }

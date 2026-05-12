@@ -55,7 +55,7 @@ export const bearingToCardinal = (deg: number): 'Kuzey' | 'Doğu' | 'Güney' | '
 
 export const turnInstruction = (signedDelta: number): string => {
   const abs = Math.abs(signedDelta);
-  if (abs <= 15) {
+  if (abs <= 30) {
     return 'Aynı yönde devam et';
   }
   if (abs <= 45) {

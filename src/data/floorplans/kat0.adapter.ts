@@ -24,6 +24,27 @@ const toBuildingNode = (id: string, name: string, floor: number): BuildingNode =
   type: nodeTypeById[id] ?? 'junction',
 });
 
+const STEP_OVERRIDES: Record<string, number> = {
+  // Kalibrasyon adimlari:
+  // N1 -> N3: 10 adim
+  // N3 -> N4: 7 adim
+  // N4 -> N5: 19 adim
+  // N5 -> N10: 10 adim
+  // N4 -> N2 toplam: 13 adim (N4->N3->N13->N2)
+  // N2 -> N9 toplam: 38 adim (N2->N12->N11->N9)
+  // N6 (WC Erkek) -> N9 toplam: 43 adim (N6->N12->N11->N9)
+  'N1->N3': 10,
+  'N3->N4': 7,
+  'N3->N13': 3,
+  'N13->N2': 3,
+  'N4->N5': 19,
+  'N5->N10': 10,
+  'N6->N12': 18,
+  'N2->N12': 13,
+  'N12->N11': 13,
+  'N11->N9': 12,
+};
+
 export const KAT0_BUILDING_MAP: BuildingMap = {
   id: `${KAT0_DATASET.buildingId}-kat0-v2`,
   name: 'Kat 0 Yeni Kroki',
@@ -32,7 +53,7 @@ export const KAT0_BUILDING_MAP: BuildingMap = {
   edges: KAT0_DATASET.edges.map(edge => ({
     from: edge.from,
     to: edge.to,
-    steps: METERS_TO_STEPS(edge.meters),
+    steps: STEP_OVERRIDES[`${edge.from}->${edge.to}`] ?? METERS_TO_STEPS(edge.meters),
     instruction: `${edge.instruction} (~${edge.meters.toFixed(2)} metre)`,
   })),
 };

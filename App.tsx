@@ -21,10 +21,10 @@ import {
 } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const DIRECTION_ALIGNMENT_THRESHOLD_DEG = 40;
-// Pusula kalibrasyonu: kat planı kuzeyi ile manyetik kuzey farkı (derece).
-// N10 -> N5 hattı kuzey doğrultusunda olduğu için varsayılan 0 tutulur.
-const BUILDING_BEARING_OFFSET_DEG = 0;
+const DIRECTION_ALIGNMENT_THRESHOLD_DEG = 60;
+// Pusula kalibrasyonu: kat planındaki N oku ekran kuzeyine göre ~45° sola dönük.
+// Bu nedenle ekran-bazlı rota açıları dünya yönüne çevrilirken +45° ofset uygulanır.
+const BUILDING_BEARING_OFFSET_DEG = 45;
 
 const normalizeDeg = (value: number): number => {
   const normalized = value % 360;
@@ -284,13 +284,20 @@ function App() {
     if (!isVoiceEnabled) {
       return;
     }
+    const ttsText = text
+      .replace(/\(\s*~?\s*\d+(?:[.,]\d+)?\s*metre\s*\)/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!ttsText) {
+      return;
+    }
     try {
       if (!ttsReadyRef.current) {
         await Tts.getInitStatus();
         ttsReadyRef.current = true;
       }
       Tts.stop();
-      Tts.speak(text);
+      Tts.speak(ttsText);
     } catch (error) {
       promptEnableTts();
       console.warn('TTS unavailable:', error);
@@ -457,13 +464,14 @@ function App() {
         'N1|P01': ['N1'],
         'N1|P02': ['N1', 'N3'],
         'N1|P03': ['N1', 'N3', 'N13'],
-        'N1|P04': ['N1', 'N3', 'N6', 'N12'],
-        'N1|P05': ['N1', 'N3', 'N6', 'N12', 'N11'],
-        'N1|P06': ['N1', 'N3', 'N6', 'N12', 'N11', 'N9'],
+        'N1|P04': ['N1', 'N3', 'N13', 'N2', 'N12'],
+        'N1|P05': ['N1', 'N3', 'N13', 'N2', 'N12', 'N11'],
+        'N1|P06': ['N1', 'N3', 'N13', 'N2', 'N12', 'N11', 'N9'],
         'N1|P07': ['N1', 'N3'],
-        'N1|P08': ['N1', 'N3', 'N6', 'N7'],
-        'N1|P09': ['N1', 'N3', 'N6', 'N7', 'N8'],
-        'N1|P10': ['N1', 'N3', 'N6', 'N7', 'N8'],
+        // N1 girisinden lab/sef hedeflerinde N3'te batiya donup ust koridordan ilerle.
+        'N1|P08': ['N1', 'N3', 'N13', 'N2', 'N8', 'N7'],
+        'N1|P09': ['N1', 'N3', 'N13', 'N2', 'N8'],
+        'N1|P10': ['N1', 'N3', 'N13', 'N2', 'N8'],
         'N1|P11': ['N1', 'N3', 'N6'],
         'N1|P12': ['N1', 'N3', 'N4', 'N5'],
         'N1|P13': ['N1', 'N3', 'N4', 'N5'],
@@ -601,6 +609,16 @@ function App() {
     spokenInstructionIndexRef.current = -1;
     arrivalAnnouncementDoneRef.current = false;
     Tts.stop();
+  }, []);
+
+  const toggleVoice = useCallback(() => {
+    setIsVoiceEnabled(prev => {
+      const next = !prev;
+      if (!next) {
+        Tts.stop();
+      }
+      return next;
+    });
   }, []);
 
   const completedInstructionIndex = useMemo(() => {
@@ -904,9 +922,8 @@ function App() {
       return 'Hedefe ulaştınız. Konumunuzu kontrol edin.';
     }
     const delta = angleDeltaSigned(headingDeg, targetBearingDeg);
-    const targetCardinal = bearingToCardinal(targetBearingDeg);
     const turn = turnInstruction(delta);
-    return `${turn}. ${targetCardinal} yönünde ilerle.`;
+    return `${turn}.`;
   }, [headingDeg, targetBearingDeg]);
 
   const targetCardinal = useMemo(() => {
@@ -933,9 +950,16 @@ function App() {
           <Text style={styles.headerTitle}>EasyGo</Text>
           <Text style={styles.headerSubtitle}>İç Mekan Navigasyon</Text>
         </View>
-        <TouchableOpacity style={styles.hamburgerButton} onPress={openDrawer}>
-          <Text style={styles.hamburgerIcon}>☰</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          {activeScreen === 'navigation' && (
+            <TouchableOpacity style={styles.voiceButton} onPress={toggleVoice}>
+              <Text style={styles.voiceIcon}>{isVoiceEnabled ? '🔊' : '🔇'}</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.hamburgerButton} onPress={openDrawer}>
+            <Text style={styles.hamburgerIcon}>☰</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {activeScreen === 'navigation' && route ? (
@@ -947,16 +971,6 @@ function App() {
           facingHint={facingHint}
           targetCardinal={targetCardinal}
           pinPosition={pinPosition}
-          isVoiceEnabled={isVoiceEnabled}
-          onToggleVoice={() => {
-            setIsVoiceEnabled(prev => {
-              const next = !prev;
-              if (!next) {
-                Tts.stop();
-              }
-              return next;
-            });
-          }}
           onBack={() => setActiveScreen('home')}
           onManualStep={() => {
             setSensorSteps(prev => prev + 1);
@@ -1298,6 +1312,24 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#64748B',
     marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  voiceButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceIcon: {
+    fontSize: 22,
   },
   container: {
     padding: 20,

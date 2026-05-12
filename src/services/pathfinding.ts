@@ -4,6 +4,7 @@ type EdgeWithDirection = RouteStep;
 
 const buildAdjacency = (map: BuildingMap): Record<string, EdgeWithDirection[]> => {
   const adjacency: Record<string, EdgeWithDirection[]> = {};
+  const nodeMap = getNodeMap(map);
 
   for (const edge of map.edges) {
     if (!adjacency[edge.from]) {
@@ -18,7 +19,7 @@ const buildAdjacency = (map: BuildingMap): Record<string, EdgeWithDirection[]> =
       from: edge.to,
       to: edge.from,
       steps: edge.steps,
-      instruction: edge.instruction,
+      instruction: `${nodeMap[edge.from]?.name ?? edge.from} yönüne ilerleyin.`,
     });
   }
 

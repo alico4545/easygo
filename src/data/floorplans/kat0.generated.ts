@@ -61,31 +61,31 @@ export const KAT0_DATASET: FloorPlanDataset = {
   ],
   nodes: [
     {id: 'N1', name: 'Ana Giriş', floor: 0, xPx: 2388, yPx: 249, qrPayload: qr('N1', 0), note: 'Eşikten bina içine doğu yönünde 2 adım kalibrasyon'},
-    {id: 'N2', name: 'Koridor Sol Kavşak', floor: 0, xPx: 1500, yPx: 890, qrPayload: qr('N2', 0)},
-    {id: 'N3', name: 'Koridor Sağ Kavşak', floor: 0, xPx: 2430, yPx: 855, qrPayload: qr('N3', 0), note: 'Spor kapısı önünden batı yönüne 2 adım, kavşak merkezine alınmış kalibrasyon (ince ayar +20px sağ, +5px aşağı)'},
+    {id: 'N2', name: 'Koridor Sol Kavşak', floor: 0, xPx: 1500, yPx: 910, qrPayload: qr('N2', 0)},
+    {id: 'N3', name: 'Koridor Sağ Kavşak', floor: 0, xPx: 2430, yPx: 910, qrPayload: qr('N3', 0), note: 'N2 koridoru orta hat hizasi icin merkez cizgiye alinmistir (ince ayar +20px asagi)'},
     {id: 'N4', name: 'Merdiven Alt/Üst', floor: 0, xPx: 2170, yPx: 1200, qrPayload: qr('N4', 0), note: 'Kat geçiş doğrulaması'},
     {id: 'N5', name: 'Koridor Aşağı Dönüş', floor: 0, xPx: 2200, yPx: 1750, qrPayload: qr('N5', 0)},
     {id: 'N6', name: 'WC Erkek Kapısı', floor: 0, xPx: 2100, yPx: 906, qrPayload: null, note: 'Koridor köşesine alınmış kalibrasyon (oda içi sapmayı engeller)'},
     {id: 'N7', name: 'Laboratuvar Kapısı', floor: 0, xPx: 1335, yPx: 890, qrPayload: null, note: 'N3 kalibrasyon trendiyle hizalandı'},
     {id: 'N8', name: 'Şef Odası Kapısı', floor: 0, xPx: 900, yPx: 890, qrPayload: null, note: 'N3 kalibrasyon trendiyle hizalandı'},
-    {id: 'N9', name: 'Koridor Çıkış Sol Uç', floor: 0, xPx: 100, yPx: 890, qrPayload: qr('N9', 0)},
+    {id: 'N9', name: 'Koridor Çıkış Sol Uç', floor: 0, xPx: 100, yPx: 910, qrPayload: qr('N9', 0)},
     {id: 'N10', name: 'Arka Çıkış Kapısı', floor: 0, xPx: 2200, yPx: 2150, qrPayload: qr('N10', 0)},
-    {id: 'N11', name: 'Kütüphane Kapısı Hattı', floor: 0, xPx: 860, yPx: 890, qrPayload: null},
-    {id: 'N12', name: 'Depo Kapısı Hattı', floor: 0, xPx: 1320, yPx: 890, qrPayload: null},
-    {id: 'N13', name: 'Öğretmenler Kapısı Hattı', floor: 0, xPx: 1910, yPx: 890, qrPayload: null},
+    {id: 'N11', name: 'Kütüphane Kapısı Hattı', floor: 0, xPx: 860, yPx: 910, qrPayload: null},
+    {id: 'N12', name: 'Depo Kapısı Hattı', floor: 0, xPx: 1320, yPx: 910, qrPayload: null},
+    {id: 'N13', name: 'Öğretmenler Kapısı Hattı', floor: 0, xPx: 1910, yPx: 910, qrPayload: null},
   ],
   edges: [
     {from: 'N1', to: 'N3', meters: 5.2, corridor: 'Dikey giriş koridoru', instruction: 'Güney yönünde düz ilerleyin.'},
-    {from: 'N3', to: 'N13', meters: 4.7, corridor: 'Üst ana koridor', instruction: 'Sola dönüp öğretmenler odası hattına ilerleyin.'},
+    {from: 'N3', to: 'N13', meters: 4.7, corridor: 'Üst ana koridor', instruction: 'Öğretmenler odası hattına ilerleyin.'},
     {from: 'N13', to: 'N2', meters: 4.8, corridor: 'Üst ana koridor', instruction: 'Koridorun orta noktasına ilerleyin.'},
     {from: 'N2', to: 'N12', meters: 4.3, corridor: 'Üst koridor', instruction: 'Ana koridorda batı yönüne ilerleyin.'},
     {from: 'N12', to: 'N11', meters: 5.0, corridor: 'Üst koridor', instruction: 'Kütüphane kapısı hattına ilerleyin.'},
     {from: 'N11', to: 'N9', meters: 4.5, corridor: 'Üst koridor sol kol', instruction: 'Koridorun sol ucuna ilerleyin.'},
     {from: 'N3', to: 'N4', meters: 4.0, corridor: 'Merdiven bağlantısı', instruction: 'Merdiven bölgesine inin.'},
-    {from: 'N3', to: 'N6', meters: 6.2, corridor: 'Sağ-alt koridor bağlantısı', instruction: 'Merdivenleri geçmeden sola yönelip WC Erkek kapısı hattına ilerleyin.'},
+    {from: 'N3', to: 'N6', meters: 6.2, corridor: 'Sağ-alt koridor bağlantısı', instruction: 'Merdivenleri geçmeden WC Erkek kapısı hattına ilerleyin.'},
     {from: 'N4', to: 'N5', meters: 7.0, corridor: 'Yükselti geçişi', instruction: 'Yükseltili bloğa geçip koridor dönüşüne ulaşın.'},
     {from: 'N5', to: 'N10', meters: 14.7, corridor: 'Arka çıkış koridoru', instruction: 'Arka çıkışa doğru düz ilerleyin.'},
-    {from: 'N5', to: 'N6', meters: 2.6, corridor: 'Sağ alt koridor köşe geçişi', instruction: 'Koridor köşesinden sola dönüp WC Erkek hattına bağlanın.'},
+    {from: 'N5', to: 'N6', meters: 2.6, corridor: 'Sağ alt koridor köşe geçişi', instruction: 'Koridor köşesinden WC Erkek hattına bağlanın.'},
     {from: 'N6', to: 'N13', meters: 4.6, corridor: 'Sağ üst geçiş', instruction: 'WC Erkek köşesinden yukarı çıkarak Öğretmenler kapısı hattına ilerleyin.'},
     {from: 'N6', to: 'N12', meters: 7.9, corridor: 'Ana koridor orta geçiş', instruction: 'Ana koridorda batı yönüne ilerleyin.'},
     {from: 'N2', to: 'N8', meters: 3.9, corridor: 'Orta geçiş', instruction: 'Orta geçişten Şef Odası kapısına inin.'},
@@ -113,6 +113,6 @@ export const KAT0_DATASET: FloorPlanDataset = {
   ],
 };
 
-export const METERS_TO_STEPS = (meters: number, stepLengthMeters = 0.72): number => {
+export const METERS_TO_STEPS = (meters: number, stepLengthMeters = 0.55): number => {
   return Math.max(1, Math.round(meters / stepLengthMeters));
 };
