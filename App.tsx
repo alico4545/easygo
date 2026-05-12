@@ -39,6 +39,10 @@ const WEST_CORRIDOR_NODES = new Set(['N3', 'N13', 'N2', 'N12', 'N11', 'N9', 'N8'
 const EAST_CORRIDOR_DESTINATIONS = new Set(['P01', 'P02', 'P03', 'P04', 'P05', 'P07', 'P08', 'P09', 'P10', 'P11']);
 const EAST_CORRIDOR_NODES = new Set(['N9', 'N11', 'N12', 'N2', 'N13', 'N3', 'N1', 'N8', 'N7', 'N6']);
 const MID_CORRIDOR_NODES = new Set(['N9', 'N11', 'N12', 'N2', 'N13', 'N3']);
+const EDGE_BEARING_OFFSETS: Record<string, number> = {
+  // N3 -> N4 merdiven hattinda pusula oku sahada biraz sola alinmali.
+  'N3->N4': -15,
+};
 
 if (
   Platform.OS === 'android' &&
@@ -593,7 +597,7 @@ function App() {
         'N10|P12': ['N10', 'N5'], // Mudur Yrd 2
         'N10|P13': ['N10', 'N5'], // Mudur Yrd 3
         'N10|P14': ['N10'], // Hizmetli Sol
-        'N10|P15': ['N10'], // Mudur Odasi
+        'N10|P15': ['N10', 'N5'], // Mudur Odasi
         'N10|P16': ['N10'], // Mudur Yrd 4
         'N10|P17': ['N10'], // Hizmetli Sag
 
@@ -613,12 +617,12 @@ function App() {
         'N1|P12': ['N1', 'N3', 'N4', 'N5'],
         'N1|P13': ['N1', 'N3', 'N4', 'N5'],
         'N1|P14': ['N1', 'N3', 'N4', 'N5', 'N10'],
-        'N1|P15': ['N1', 'N3', 'N4', 'N5', 'N10'],
+        'N1|P15': ['N1', 'N3', 'N4', 'N5'],
         'N1|P16': ['N1', 'N3', 'N4', 'N5', 'N10'],
         'N1|P17': ['N1', 'N3', 'N4', 'N5', 'N10'],
 
         // N9 (koridor kapisi) -> sabit hedef dizileri
-        'N9|P15': ['N9', 'N11', 'N12', 'N6', 'N5', 'N10'], // Mudur Odasi
+        'N9|P15': ['N9', 'N11', 'N12', 'N2', 'N13', 'N3', 'N4', 'N5'], // Mudur Odasi
         'N9|P06': ['N9'],
         'N9|P05': ['N9', 'N11'],
         'N9|P04': ['N9', 'N11', 'N12'],
@@ -630,6 +634,11 @@ function App() {
         'N9|P08': ['N9', 'N11', 'N12', 'N2', 'N8', 'N7'],
         'N9|P10': ['N9', 'N11', 'N12', 'N2', 'N8'],
         'N9|P09': ['N9', 'N11', 'N12', 'N2', 'N8'],
+        'N9|P12': ['N9', 'N11', 'N12', 'N2', 'N13', 'N3', 'N4', 'N5'],
+        'N9|P13': ['N9', 'N11', 'N12', 'N2', 'N13', 'N3', 'N4', 'N5'],
+        'N9|P14': ['N9', 'N11', 'N12', 'N2', 'N13', 'N3', 'N4', 'N5', 'N10'],
+        'N9|P16': ['N9', 'N11', 'N12', 'N2', 'N13', 'N3', 'N4', 'N5', 'N10'],
+        'N9|P17': ['N9', 'N11', 'N12', 'N2', 'N13', 'N3', 'N4', 'N5', 'N10'],
 
         // Arka koridor / WC Kadin aksi (zigzag'i engellemek icin sabit)
         'N5|P06': ['N5', 'N6', 'N12', 'N11', 'N9'],
@@ -644,6 +653,24 @@ function App() {
         'N13|P08': ['N13', 'N2', 'N8', 'N7'],
         'N13|P10': ['N13', 'N2', 'N8'],
         'N13|P09': ['N13', 'N2', 'N8'],
+        'N13|P12': ['N13', 'N3', 'N4', 'N5'],
+        'N13|P13': ['N13', 'N3', 'N4', 'N5'],
+        'N13|P14': ['N13', 'N3', 'N4', 'N5', 'N10'],
+        'N13|P15': ['N13', 'N3', 'N4', 'N5'],
+        'N13|P16': ['N13', 'N3', 'N4', 'N5', 'N10'],
+        'N13|P17': ['N13', 'N3', 'N4', 'N5', 'N10'],
+        'N2|P12': ['N2', 'N13', 'N3', 'N4', 'N5'],
+        'N2|P13': ['N2', 'N13', 'N3', 'N4', 'N5'],
+        'N2|P14': ['N2', 'N13', 'N3', 'N4', 'N5', 'N10'],
+        'N2|P15': ['N2', 'N13', 'N3', 'N4', 'N5'],
+        'N2|P16': ['N2', 'N13', 'N3', 'N4', 'N5', 'N10'],
+        'N2|P17': ['N2', 'N13', 'N3', 'N4', 'N5', 'N10'],
+        'N3|P12': ['N3', 'N4', 'N5'],
+        'N3|P13': ['N3', 'N4', 'N5'],
+        'N3|P14': ['N3', 'N4', 'N5', 'N10'],
+        'N3|P15': ['N3', 'N4', 'N5'],
+        'N3|P16': ['N3', 'N4', 'N5', 'N10'],
+        'N3|P17': ['N3', 'N4', 'N5', 'N10'],
       };
 
       const direct = fixedByStartAndOption[`${startNodeId}|${optionId}`];
@@ -940,7 +967,9 @@ function App() {
     if (!from || !to) {
       return null;
     }
-    return normalizeDeg(bearingFromPixels(from, to) + bearingOffsetDeg);
+    const edgeKey = `${activeRouteEdge.from}->${activeRouteEdge.to}`;
+    const edgeOffset = EDGE_BEARING_OFFSETS[edgeKey] ?? 0;
+    return normalizeDeg(bearingFromPixels(from, to) + bearingOffsetDeg + edgeOffset);
   }, [activeRouteEdge, nodeCoordMap, bearingOffsetDeg]);
 
   useEffect(() => {
@@ -1112,6 +1141,9 @@ function App() {
     }
     if (activeRouteEdge?.from === 'N1' && activeRouteEdge?.to === 'N3') {
       return 'Güney yönünde dümdüz ilerle.';
+    }
+    if (activeRouteEdge?.from === 'N3' && activeRouteEdge?.to === 'N4') {
+      return 'Merdivenlerden güney yönünde dümdüz ilerleyin.';
     }
     if (activeRouteEdge?.from === 'N3' && activeRouteEdge?.to === 'N1') {
       return 'Kuzey yönünde dümdüz ilerle.';
