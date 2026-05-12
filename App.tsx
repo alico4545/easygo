@@ -38,10 +38,13 @@ const WEST_CORRIDOR_DESTINATIONS = new Set(['P04', 'P05', 'P06', 'P08', 'P09', '
 const WEST_CORRIDOR_NODES = new Set(['N3', 'N13', 'N2', 'N12', 'N11', 'N9', 'N8', 'N7', 'N6']);
 const EAST_CORRIDOR_DESTINATIONS = new Set(['P01', 'P02', 'P03', 'P04', 'P05', 'P07', 'P08', 'P09', 'P10', 'P11']);
 const EAST_CORRIDOR_NODES = new Set(['N9', 'N11', 'N12', 'N2', 'N13', 'N3', 'N1', 'N8', 'N7', 'N6']);
-const MID_CORRIDOR_NODES = new Set(['N9', 'N11', 'N12', 'N2', 'N13', 'N3']);
+const MID_CORRIDOR_NODES = new Set(['N9', 'N11', 'N12', 'N2', 'N13', 'N3', 'N8', 'N7', 'N6']);
+const WEST_STRAIGHT_EDGES = new Set(['N3->N13', 'N13->N2']);
 const EDGE_BEARING_OFFSETS: Record<string, number> = {
   // N3 -> N4 merdiven hattinda pusula oku sahada biraz sola alinmali.
   'N3->N4': -15,
+  // Tersi: N4 -> N3 (kuzeye cikis)
+  'N4->N3': 15,
 };
 
 if (
@@ -1145,8 +1148,17 @@ function App() {
     if (activeRouteEdge?.from === 'N3' && activeRouteEdge?.to === 'N4') {
       return 'Merdivenlerden güney yönünde dümdüz ilerleyin.';
     }
+    if (activeRouteEdge?.from === 'N4' && activeRouteEdge?.to === 'N3') {
+      return 'Merdivenlerden kuzey yönünde dümdüz ilerleyin.';
+    }
     if (activeRouteEdge?.from === 'N3' && activeRouteEdge?.to === 'N1') {
       return 'Kuzey yönünde dümdüz ilerle.';
+    }
+    if (activeRouteEdge?.from === 'N3' && activeRouteEdge?.to === 'N6') {
+      return 'Dümdüz ilerleyin.';
+    }
+    if (activeRouteEdge && WEST_STRAIGHT_EDGES.has(`${activeRouteEdge.from}->${activeRouteEdge.to}`)) {
+      return 'Batı yönünde dümdüz ilerleyin.';
     }
     if (
       activeRouteEdge &&
