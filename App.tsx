@@ -24,14 +24,16 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DIRECTION_ALIGNMENT_THRESHOLD_DEG = 60;
 const N1_N3_ALIGNMENT_THRESHOLD_DEG = 30;
 const N1_N3_SOUTH_ALIGNMENT_DEG = 40;
-// Pusula kalibrasyonu: kat planındaki N oku ekran kuzeyine göre ~45° sola dönük.
-// Bu nedenle ekran-bazlı rota açıları dünya yönüne çevrilirken +45° ofset uygulanır.
-const BUILDING_BEARING_OFFSET_DEG = 45;
+const WEST_CORRIDOR_ALIGNMENT_DEG = 45;
+const DEFAULT_BEARING_OFFSET_DEG = 45;
 
 const normalizeDeg = (value: number): number => {
   const normalized = value % 360;
   return normalized < 0 ? normalized + 360 : normalized;
 };
+
+const WEST_CORRIDOR_DESTINATIONS = new Set(['P04', 'P05', 'P06', 'P08', 'P09', 'P10', 'P11']);
+const WEST_CORRIDOR_NODES = new Set(['N3', 'N13', 'N2', 'N12', 'N11', 'N9', 'N8', 'N7', 'N6']);
 
 if (
   Platform.OS === 'android' &&
@@ -241,6 +243,7 @@ function App() {
   const [showHamburgerMenu, setShowHamburgerMenu] = useState(false);
   const [activeScreen, setActiveScreen] = useState<'home' | 'navigation'>('home');
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
+  const [bearingOffsetDeg, setBearingOffsetDeg] = useState(DEFAULT_BEARING_OFFSET_DEG);
 
   const drawerAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
@@ -297,6 +300,7 @@ function App() {
   const headingRef = useRef(0);
   const targetBearingRef = useRef<number | null>(null);
   const activeRouteEdgeRef = useRef<{from: string; to: string} | null>(null);
+  const destinationOptionRef = useRef<string | null>(null);
   const stepCounterRef = useRef<StepCounterHandle | null>(null);
   const promptedQrNodesRef = useRef<Set<string>>(new Set());
   const wrongDirectionPromptedRef = useRef(false);
@@ -304,6 +308,7 @@ function App() {
   const arrivalPromptedRef = useRef(false);
   const spokenInstructionIndexRef = useRef<number>(-1);
   const arrivalAnnouncementDoneRef = useRef(false);
+  const westCorridorPromptedRef = useRef(false);
   const ttsReadyRef = useRef(false);
   const ttsPromptShownRef = useRef(false);
 
@@ -419,16 +424,36 @@ function App() {
         const delta = Math.abs(angleDeltaSigned(headingRef.current, target));
         const activeEdge = activeRouteEdgeRef.current;
         const isN1ToN3 = activeEdge?.from === 'N1' && activeEdge?.to === 'N3';
+        const optionId = destinationOptionRef.current;
+        const isWestCorridorMode = !!(
+          optionId &&
+          WEST_CORRIDOR_DESTINATIONS.has(optionId) &&
+          activeEdge &&
+          WEST_CORRIDOR_NODES.has(activeEdge.from) &&
+          WEST_CORRIDOR_NODES.has(activeEdge.to)
+        );
+        const westDelta = Math.abs(angleDeltaSigned(headingRef.current, 270));
         const southDelta = Math.abs(angleDeltaSigned(headingRef.current, 180));
         const aligned = isN1ToN3
           ? delta <= N1_N3_ALIGNMENT_THRESHOLD_DEG && southDelta <= N1_N3_SOUTH_ALIGNMENT_DEG
-          : delta <= DIRECTION_ALIGNMENT_THRESHOLD_DEG;
+          : isWestCorridorMode
+            ? delta <= DIRECTION_ALIGNMENT_THRESHOLD_DEG && westDelta <= WEST_CORRIDOR_ALIGNMENT_DEG
+            : delta <= DIRECTION_ALIGNMENT_THRESHOLD_DEG;
 
         if (aligned) {
+          if (isWestCorridorMode) {
+            westCorridorPromptedRef.current = false;
+          }
           setRouteProgressSteps(prev => prev + 1);
           setWrongDirectionStreak(0);
           setDeviationScore(prev => Math.max(0, prev - 1));
         } else {
+          if (isWestCorridorMode && !westCorridorPromptedRef.current) {
+            westCorridorPromptedRef.current = true;
+            setQrRecalibrationReason('N3 sonrası bu hatta batı yönünde ilerleyin.');
+            setShowWrongDirectionModal(true);
+            speakText('Batı yönünde kalın.');
+          }
           setWrongDirectionStreak(prev => prev + 1);
           setDeviationScore(prev => prev + 1);
         }
@@ -439,7 +464,7 @@ function App() {
       stepCounterRef.current?.stop();
       stepCounterRef.current = null;
     };
-  }, [permissionsReady]);
+  }, [permissionsReady, speakText]);
 
   useEffect(() => {
     if (!permissionsReady) {
@@ -620,6 +645,7 @@ function App() {
           arrivalPromptedRef.current = false;
           spokenInstructionIndexRef.current = -1;
           arrivalAnnouncementDoneRef.current = false;
+          westCorridorPromptedRef.current = false;
           setShowArrivalModal(false);
           return;
         }
@@ -648,6 +674,7 @@ function App() {
       arrivalPromptedRef.current = false;
       spokenInstructionIndexRef.current = -1;
       arrivalAnnouncementDoneRef.current = false;
+      westCorridorPromptedRef.current = false;
       setShowArrivalModal(false);
     }
   }, [
@@ -692,6 +719,7 @@ function App() {
     arrivalPromptedRef.current = false;
     spokenInstructionIndexRef.current = -1;
     arrivalAnnouncementDoneRef.current = false;
+    westCorridorPromptedRef.current = false;
     Tts.stop();
   }, []);
 
@@ -854,8 +882,8 @@ function App() {
     if (!from || !to) {
       return null;
     }
-    return normalizeDeg(bearingFromPixels(from, to) + BUILDING_BEARING_OFFSET_DEG);
-  }, [activeRouteEdge, nodeCoordMap]);
+    return normalizeDeg(bearingFromPixels(from, to) + bearingOffsetDeg);
+  }, [activeRouteEdge, nodeCoordMap, bearingOffsetDeg]);
 
   useEffect(() => {
     headingRef.current = headingDeg;
@@ -864,6 +892,10 @@ function App() {
   useEffect(() => {
     targetBearingRef.current = targetBearingDeg;
   }, [targetBearingDeg]);
+
+  useEffect(() => {
+    destinationOptionRef.current = destinationOptionId;
+  }, [destinationOptionId]);
 
   useEffect(() => {
     if (!activeRouteEdge) {
@@ -1080,15 +1112,35 @@ function App() {
             const delta = Math.abs(angleDeltaSigned(headingRef.current, target));
             const activeEdge = activeRouteEdgeRef.current;
             const isN1ToN3 = activeEdge?.from === 'N1' && activeEdge?.to === 'N3';
+            const optionId = destinationOptionRef.current;
+            const isWestCorridorMode = !!(
+              optionId &&
+              WEST_CORRIDOR_DESTINATIONS.has(optionId) &&
+              activeEdge &&
+              WEST_CORRIDOR_NODES.has(activeEdge.from) &&
+              WEST_CORRIDOR_NODES.has(activeEdge.to)
+            );
+            const westDelta = Math.abs(angleDeltaSigned(headingRef.current, 270));
             const southDelta = Math.abs(angleDeltaSigned(headingRef.current, 180));
             const aligned = isN1ToN3
               ? delta <= N1_N3_ALIGNMENT_THRESHOLD_DEG && southDelta <= N1_N3_SOUTH_ALIGNMENT_DEG
-              : delta <= DIRECTION_ALIGNMENT_THRESHOLD_DEG;
+              : isWestCorridorMode
+                ? delta <= DIRECTION_ALIGNMENT_THRESHOLD_DEG && westDelta <= WEST_CORRIDOR_ALIGNMENT_DEG
+                : delta <= DIRECTION_ALIGNMENT_THRESHOLD_DEG;
             if (aligned) {
+              if (isWestCorridorMode) {
+                westCorridorPromptedRef.current = false;
+              }
               setRouteProgressSteps(prev => prev + 1);
               setWrongDirectionStreak(0);
               setDeviationScore(prev => Math.max(0, prev - 1));
             } else {
+              if (isWestCorridorMode && !westCorridorPromptedRef.current) {
+                westCorridorPromptedRef.current = true;
+                setQrRecalibrationReason('N3 sonrası bu hatta batı yönünde ilerleyin.');
+                setShowWrongDirectionModal(true);
+                speakText('Batı yönünde kalın.');
+              }
               setWrongDirectionStreak(prev => prev + 1);
               setDeviationScore(prev => prev + 1);
             }
