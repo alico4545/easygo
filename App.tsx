@@ -22,6 +22,13 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DIRECTION_ALIGNMENT_THRESHOLD_DEG = 40;
+// kat0_kritik_noktalar.png kuzey oku referansına göre bina +45° döndürülmüş durumda.
+const BUILDING_BEARING_OFFSET_DEG = 45;
+
+const normalizeDeg = (value: number): number => {
+  const normalized = value % 360;
+  return normalized < 0 ? normalized + 360 : normalized;
+};
 
 if (
   Platform.OS === 'android' &&
@@ -706,7 +713,7 @@ function App() {
     if (!from || !to) {
       return null;
     }
-    return bearingFromPixels(from, to);
+    return normalizeDeg(bearingFromPixels(from, to) + BUILDING_BEARING_OFFSET_DEG);
   }, [activeRouteEdge, nodeCoordMap]);
 
   useEffect(() => {
