@@ -22,6 +22,8 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DIRECTION_ALIGNMENT_THRESHOLD_DEG = 60;
+const N1_N3_ALIGNMENT_THRESHOLD_DEG = 30;
+const N1_N3_SOUTH_ALIGNMENT_DEG = 40;
 // Pusula kalibrasyonu: kat planındaki N oku ekran kuzeyine göre ~45° sola dönük.
 // Bu nedenle ekran-bazlı rota açıları dünya yönüne çevrilirken +45° ofset uygulanır.
 const BUILDING_BEARING_OFFSET_DEG = 45;
@@ -82,6 +84,8 @@ const ROUTE_TOTAL_STEP_CALIBRATIONS: Record<string, number> = {
   'N1|P02': 5,
   // N1 -> N3 hatti hedefi (Spor odasi/N3): 10 adim
   'N1|P07': 10,
+  // N1 -> WC Erkek: 15 adim (N1->N3:10 + N3->N6:5)
+  'N1|P11': 15,
 };
 
 const applyRouteTotalStepCalibration = (
@@ -283,6 +287,7 @@ function App() {
   const [headingDeg, setHeadingDeg] = useState(0);
   const headingRef = useRef(0);
   const targetBearingRef = useRef<number | null>(null);
+  const activeRouteEdgeRef = useRef<{from: string; to: string} | null>(null);
   const stepCounterRef = useRef<StepCounterHandle | null>(null);
   const promptedQrNodesRef = useRef<Set<string>>(new Set());
   const wrongDirectionPromptedRef = useRef(false);
@@ -403,7 +408,12 @@ function App() {
         }
 
         const delta = Math.abs(angleDeltaSigned(headingRef.current, target));
-        const aligned = delta <= DIRECTION_ALIGNMENT_THRESHOLD_DEG;
+        const activeEdge = activeRouteEdgeRef.current;
+        const isN1ToN3 = activeEdge?.from === 'N1' && activeEdge?.to === 'N3';
+        const southDelta = Math.abs(angleDeltaSigned(headingRef.current, 180));
+        const aligned = isN1ToN3
+          ? delta <= N1_N3_ALIGNMENT_THRESHOLD_DEG && southDelta <= N1_N3_SOUTH_ALIGNMENT_DEG
+          : delta <= DIRECTION_ALIGNMENT_THRESHOLD_DEG;
 
         if (aligned) {
           setRouteProgressSteps(prev => prev + 1);
@@ -839,6 +849,17 @@ function App() {
   }, [targetBearingDeg]);
 
   useEffect(() => {
+    if (!activeRouteEdge) {
+      activeRouteEdgeRef.current = null;
+      return;
+    }
+    activeRouteEdgeRef.current = {
+      from: activeRouteEdge.from,
+      to: activeRouteEdge.to,
+    };
+  }, [activeRouteEdge]);
+
+  useEffect(() => {
     if (hasArrived) {
       return;
     }
@@ -1040,7 +1061,13 @@ function App() {
               return;
             }
             const delta = Math.abs(angleDeltaSigned(headingRef.current, target));
-            if (delta <= DIRECTION_ALIGNMENT_THRESHOLD_DEG) {
+            const activeEdge = activeRouteEdgeRef.current;
+            const isN1ToN3 = activeEdge?.from === 'N1' && activeEdge?.to === 'N3';
+            const southDelta = Math.abs(angleDeltaSigned(headingRef.current, 180));
+            const aligned = isN1ToN3
+              ? delta <= N1_N3_ALIGNMENT_THRESHOLD_DEG && southDelta <= N1_N3_SOUTH_ALIGNMENT_DEG
+              : delta <= DIRECTION_ALIGNMENT_THRESHOLD_DEG;
+            if (aligned) {
               setRouteProgressSteps(prev => prev + 1);
               setWrongDirectionStreak(0);
               setDeviationScore(prev => Math.max(0, prev - 1));

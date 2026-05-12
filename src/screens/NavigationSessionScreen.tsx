@@ -119,7 +119,7 @@ export function NavigationSessionScreen({
           <View style={styles.statCard}>
             <View style={[styles.statIconBox, { backgroundColor: '#D1FAE5' }]}><Text style={styles.statIcon}>👣</Text></View>
             <View>
-              <Text style={styles.statLabel}>ATILAN ADIM</Text>
+              <Text style={styles.statLabel}>HEDEFE ATILAN DOĞRU ADIM</Text>
               <Text style={styles.statValueGreen}>{progressSteps}</Text>
             </View>
           </View>

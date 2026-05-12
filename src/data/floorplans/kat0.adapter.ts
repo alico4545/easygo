@@ -33,8 +33,10 @@ const STEP_OVERRIDES: Record<string, number> = {
   // N4 -> N2 toplam: 13 adim (N4->N3->N13->N2)
   // N2 -> N9 toplam: 38 adim (N2->N12->N11->N9)
   // N6 (WC Erkek) -> N9 toplam: 43 adim (N6->N12->N11->N9)
+  // N3 -> N6 (WC Erkek): 5 adim
   'N1->N3': 10,
   'N3->N4': 7,
+  'N3->N6': 5,
   'N3->N13': 3,
   'N13->N2': 3,
   'N4->N5': 19,
