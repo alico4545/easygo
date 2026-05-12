@@ -33,7 +33,7 @@ export const KAT0_BUILDING_MAP: BuildingMap = {
     from: edge.from,
     to: edge.to,
     steps: METERS_TO_STEPS(edge.meters),
-    instruction: `${edge.instruction} (~${edge.meters.toFixed(2)} m)`,
+    instruction: `${edge.instruction} (~${edge.meters.toFixed(2)} metre)`,
   })),
 };
 

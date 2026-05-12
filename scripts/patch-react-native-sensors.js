@@ -1,25 +1,50 @@
 const fs = require('fs');
 const path = require('path');
 
-const target = path.join(
-  process.cwd(),
-  'node_modules',
-  'react-native-sensors',
-  'android',
-  'build.gradle',
-);
+const targets = [
+  {
+    label: 'react-native-sensors',
+    file: path.join(
+      process.cwd(),
+      'node_modules',
+      'react-native-sensors',
+      'android',
+      'build.gradle',
+    ),
+  },
+  {
+    label: 'react-native-tts',
+    file: path.join(
+      process.cwd(),
+      'node_modules',
+      'react-native-tts',
+      'android',
+      'build.gradle',
+    ),
+  },
+];
 
-if (!fs.existsSync(target)) {
-  console.log('[patch-react-native-sensors] target not found, skipping');
-  process.exit(0);
-}
+for (const target of targets) {
+  if (!fs.existsSync(target.file)) {
+    console.log(`[patch-gradle-repos] ${target.label}: target not found, skipping`);
+    continue;
+  }
 
-const original = fs.readFileSync(target, 'utf8');
-const patched = original.replace(/\bjcenter\(\)/g, 'mavenCentral()');
+  const original = fs.readFileSync(target.file, 'utf8');
+  let patched = original.replace(/\bjcenter\(\)/g, 'mavenCentral()');
 
-if (patched !== original) {
-  fs.writeFileSync(target, patched, 'utf8');
-  console.log('[patch-react-native-sensors] patched jcenter() -> mavenCentral()');
-} else {
-  console.log('[patch-react-native-sensors] no jcenter() found, skipping');
+  if (target.label === 'react-native-tts') {
+    // Legacy android plugin declaration in this module breaks on modern Gradle.
+    patched = patched.replace(
+      /buildscript[\s\S]*?apply plugin:\s*'com\.android\.library'/,
+      "apply plugin: 'com.android.library'",
+    );
+  }
+
+  if (patched !== original) {
+    fs.writeFileSync(target.file, patched, 'utf8');
+    console.log(`[patch-gradle-repos] ${target.label}: patched jcenter() -> mavenCentral()`);
+  } else {
+    console.log(`[patch-gradle-repos] ${target.label}: no jcenter() found, skipping`);
+  }
 }

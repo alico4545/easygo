@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Tts from 'react-native-tts';
 import {
   Pressable,
   SafeAreaView,
@@ -226,6 +227,22 @@ function App() {
   const wrongDirectionPromptedRef = useRef(false);
   const recalibrationPromptedRef = useRef(false);
   const arrivalPromptedRef = useRef(false);
+  const spokenInstructionIndexRef = useRef<number>(-1);
+  const arrivalAnnouncementDoneRef = useRef(false);
+  const ttsReadyRef = useRef(false);
+
+  const speakText = useCallback(async (text: string) => {
+    try {
+      if (!ttsReadyRef.current) {
+        await Tts.getInitStatus();
+        ttsReadyRef.current = true;
+      }
+      Tts.stop();
+      Tts.speak(text);
+    } catch (error) {
+      console.warn('TTS unavailable:', error);
+    }
+  }, []);
 
   const currentNode: BuildingNode | undefined = useMemo(
     () => KAT0_BUILDING_MAP.nodes.find(n => n.id === currentNodeId),
@@ -452,6 +469,8 @@ function App() {
           wrongDirectionPromptedRef.current = false;
           recalibrationPromptedRef.current = false;
           arrivalPromptedRef.current = false;
+          spokenInstructionIndexRef.current = -1;
+          arrivalAnnouncementDoneRef.current = false;
           setShowArrivalModal(false);
           return;
         }
@@ -476,6 +495,8 @@ function App() {
       wrongDirectionPromptedRef.current = false;
       recalibrationPromptedRef.current = false;
       arrivalPromptedRef.current = false;
+      spokenInstructionIndexRef.current = -1;
+      arrivalAnnouncementDoneRef.current = false;
       setShowArrivalModal(false);
     }
   }, [
@@ -653,6 +674,7 @@ function App() {
       wrongDirectionPromptedRef.current = true;
       recalibrationPromptedRef.current = true;
       setShowWrongDirectionModal(true);
+      speakText('Yanlış yönde ilerliyorsunuz.');
       setQrRecalibrationReason('5 adimdir ters yondesiniz.');
       return;
     }
@@ -661,8 +683,9 @@ function App() {
       recalibrationPromptedRef.current = true;
       setQrRecalibrationReason('Beklenen adim asildi. Konum dogrulamasi gerekiyor.');
       setShowWrongDirectionModal(true);
+      speakText('Yanlış yönde ilerliyorsunuz.');
     }
-  }, [deviationScore, wrongDirectionStreak, route, routeProgressSteps]);
+  }, [deviationScore, wrongDirectionStreak, route, routeProgressSteps, speakText]);
 
   useEffect(() => {
     if (wrongDirectionStreak === 0) {
@@ -696,11 +719,53 @@ function App() {
     promptedQrNodesRef.current.add(nextNodeId);
     setQrRecalibrationReason(`Kritik nokta ${nextNodeId} yaklasiliyor. QR ile dogrulama onerilir.`);
     setShowWrongDirectionModal(true);
-  }, [activeRouteEdge, route, deviationScore]);
+    speakText('Yanlış yönde ilerliyorsunuz.');
+  }, [activeRouteEdge, route, deviationScore, speakText]);
+
+  useEffect(() => {
+    const setupTts = async () => {
+      try {
+        await Tts.getInitStatus();
+        ttsReadyRef.current = true;
+        try {
+          await Tts.setDefaultLanguage('tr-TR');
+        } catch (langError) {
+          console.warn('tr-TR unavailable, fallback en-US:', langError);
+          await Tts.setDefaultLanguage('en-US');
+        }
+        Tts.setDefaultRate(0.48);
+        Tts.setDucking(true);
+      } catch (error) {
+        ttsReadyRef.current = false;
+        console.warn('TTS setup skipped:', error);
+      }
+    };
+    setupTts();
+  }, []);
+
+  useEffect(() => {
+    if (activeScreen !== 'navigation' || !route) {
+      spokenInstructionIndexRef.current = -1;
+      return;
+    }
+    if (completedInstructionIndex < 0 || completedInstructionIndex >= route.steps.length) {
+      return;
+    }
+    if (spokenInstructionIndexRef.current === completedInstructionIndex) {
+      return;
+    }
+    const instruction = route.steps[completedInstructionIndex]?.instruction;
+    if (!instruction) {
+      return;
+    }
+    spokenInstructionIndexRef.current = completedInstructionIndex;
+    speakText(instruction);
+  }, [activeScreen, route, completedInstructionIndex, speakText]);
 
   useEffect(() => {
     if (!route) {
       arrivalPromptedRef.current = false;
+      arrivalAnnouncementDoneRef.current = false;
       setShowArrivalModal(false);
       return;
     }
@@ -712,7 +777,11 @@ function App() {
     }
     arrivalPromptedRef.current = true;
     setShowArrivalModal(true);
-  }, [route, routeProgressSteps]);
+    if (!arrivalAnnouncementDoneRef.current) {
+      arrivalAnnouncementDoneRef.current = true;
+      speakText('Hedefe vardınız.');
+    }
+  }, [route, routeProgressSteps, speakText]);
 
   const facingHint = useMemo(() => {
     if (targetBearingDeg === null) {

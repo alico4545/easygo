@@ -110,7 +110,9 @@ export function NavigationSessionScreen({
             <View style={styles.statIconBox}><Text style={styles.statIcon}>📏</Text></View>
             <View>
               <Text style={styles.statLabel}>KALAN MESAFE</Text>
-              <Text style={styles.statValueBlue}>{remainingMeters.toFixed(1)} <Text style={styles.statUnit}>m</Text></Text>
+              <Text style={styles.statValueBlue}>
+                {remainingMeters.toFixed(1)} <Text style={styles.statUnit}>metre</Text>
+              </Text>
             </View>
           </View>
           
