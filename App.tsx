@@ -74,6 +74,55 @@ const POI_PIN_OVERRIDES: Record<string, { xPx: number; yPx: number }> = {
   P02: { xPx: 2310, yPx: 705 },
 };
 
+const ROUTE_TOTAL_STEP_CALIBRATIONS: Record<string, number> = {
+  // N1 koridoru kalibrasyonu (gercek adim)
+  // N1 -> Rehberlik: 2 adim
+  'N1|P01': 2,
+  // N1 -> Mudur Yardimcisi 1: 5 adim
+  'N1|P02': 5,
+  // N1 -> N3 hatti hedefi (Spor odasi/N3): 10 adim
+  'N1|P07': 10,
+};
+
+const applyRouteTotalStepCalibration = (
+  route: RouteResult,
+  startNodeId: string,
+  destinationOptionId: string | null,
+): RouteResult => {
+  if (!destinationOptionId || route.steps.length === 0) {
+    return route;
+  }
+  const targetTotal = ROUTE_TOTAL_STEP_CALIBRATIONS[`${startNodeId}|${destinationOptionId}`];
+  if (!targetTotal || targetTotal <= 0) {
+    return route;
+  }
+
+  const currentTotal = route.steps.reduce((sum, step) => sum + step.steps, 0);
+  if (currentTotal <= 0 || currentTotal === targetTotal) {
+    return route;
+  }
+
+  const scaled = route.steps.map(step => ({
+    ...step,
+    steps: Math.max(1, Math.round((step.steps / currentTotal) * targetTotal)),
+  }));
+  let scaledTotal = scaled.reduce((sum, step) => sum + step.steps, 0);
+  const delta = targetTotal - scaledTotal;
+  if (delta !== 0 && scaled.length > 0) {
+    scaled[scaled.length - 1] = {
+      ...scaled[scaled.length - 1],
+      steps: Math.max(1, scaled[scaled.length - 1].steps + delta),
+    };
+    scaledTotal = scaled.reduce((sum, step) => sum + step.steps, 0);
+  }
+
+  return {
+    ...route,
+    steps: scaled,
+    totalSteps: scaledTotal,
+  };
+};
+
 const buildRouteViaCheckpoints = (
   startNodeId: string,
   targetNodeId: string,
@@ -461,7 +510,7 @@ function App() {
         'N10|P17': ['N10'], // Hizmetli Sag
 
         // N1 (ana giris) -> sabit hedef dizileri
-        'N1|P01': ['N1'],
+        'N1|P01': ['N1', 'N3'],
         'N1|P02': ['N1', 'N3'],
         'N1|P03': ['N1', 'N3', 'N13'],
         'N1|P04': ['N1', 'N3', 'N13', 'N2', 'N12'],
@@ -527,7 +576,13 @@ function App() {
       if (fixedSequence) {
         const fixedBySequence = buildRouteFromNodeSequence(fixedSequence);
         if (fixedBySequence) {
-          setRoute(fixedBySequence);
+          setRoute(
+            applyRouteTotalStepCalibration(
+              fixedBySequence,
+              currentNodeId,
+              destinationOptionId,
+            ),
+          );
           setRouteProgressSteps(0);
           setDeviationScore(0);
           setWrongDirectionStreak(0);
@@ -553,7 +608,9 @@ function App() {
           findShortestRoute(KAT0_BUILDING_MAP, currentNodeId, destinationNodeId)
           : findShortestRoute(KAT0_BUILDING_MAP, currentNodeId, destinationNodeId);
 
-      setRoute(result);
+      setRoute(
+        result ? applyRouteTotalStepCalibration(result, currentNodeId, destinationOptionId) : null,
+      );
       setRouteProgressSteps(0);
       setDeviationScore(0);
       setWrongDirectionStreak(0);
@@ -921,10 +978,13 @@ function App() {
     if (targetBearingDeg === null) {
       return 'Hedefe ulaştınız. Konumunuzu kontrol edin.';
     }
+    if (activeRouteEdge?.from === 'N1' && activeRouteEdge?.to === 'N3') {
+      return 'Güney yönünde dümdüz ilerle.';
+    }
     const delta = angleDeltaSigned(headingDeg, targetBearingDeg);
     const turn = turnInstruction(delta);
     return `${turn}.`;
-  }, [headingDeg, targetBearingDeg]);
+  }, [headingDeg, targetBearingDeg, activeRouteEdge]);
 
   const targetCardinal = useMemo(() => {
     if (targetBearingDeg === null) {
