@@ -76,7 +76,7 @@ export const KAT0_DATASET: FloorPlanDataset = {
   ],
   edges: [
     {from: 'N1', to: 'N3', meters: 5.2, corridor: 'Dikey giriş koridoru', instruction: 'Güney yönünde düz ilerleyin.'},
-    {from: 'N3', to: 'N13', meters: 4.7, corridor: 'Üst ana koridor', instruction: 'Öğretmenler odası hattına ilerleyin.'},
+    {from: 'N3', to: 'N13', meters: 4.7, corridor: 'Üst ana koridor', instruction: 'Batı yönünde öğretmenler odası hattına ilerleyin.'},
     {from: 'N13', to: 'N2', meters: 4.8, corridor: 'Üst ana koridor', instruction: 'Koridorun orta noktasına ilerleyin.'},
     {from: 'N2', to: 'N12', meters: 4.3, corridor: 'Üst koridor', instruction: 'Ana koridorda batı yönüne ilerleyin.'},
     {from: 'N12', to: 'N11', meters: 5.0, corridor: 'Üst koridor', instruction: 'Kütüphane kapısı hattına ilerleyin.'},

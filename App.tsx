@@ -84,8 +84,17 @@ const ROUTE_TOTAL_STEP_CALIBRATIONS: Record<string, number> = {
   'N1|P02': 5,
   // N1 -> N3 hatti hedefi (Spor odasi/N3): 10 adim
   'N1|P07': 10,
+  // N1 -> Ogretmenler: 10 adim guney + 9 adim bati = 19 adim
+  'N1|P03': 19,
   // N1 -> WC Erkek: 15 adim (N1->N3:10 + N3->N6:5)
   'N1|P11': 15,
+  // N13 baslangici (N2 bati koridoru kalibrasyonlari)
+  'N13|P04': 10, // Depo
+  'N13|P05': 13, // Kutuphane
+  'N13|P06': 28, // WC Kadin
+  'N13|P08': 11, // Laboratuvar 1
+  'N13|P10': 15, // Sef Odasi
+  'N13|P09': 25, // Laboratuvar 2
 };
 
 const applyRouteTotalStepCalibration = (
@@ -547,6 +556,14 @@ function App() {
         'N6|P06': ['N6', 'N12', 'N11', 'N9'],
         'N12|P06': ['N12', 'N11', 'N9'],
         'N11|P06': ['N11', 'N9'],
+
+        // N13 baslangici: N2 bati koridoru sabit akisi
+        'N13|P04': ['N13', 'N2', 'N12'],
+        'N13|P05': ['N13', 'N2', 'N12', 'N11'],
+        'N13|P06': ['N13', 'N2', 'N12', 'N11', 'N9'],
+        'N13|P08': ['N13', 'N2', 'N8', 'N7'],
+        'N13|P10': ['N13', 'N2', 'N8'],
+        'N13|P09': ['N13', 'N2', 'N8'],
       };
 
       const direct = fixedByStartAndOption[`${startNodeId}|${optionId}`];

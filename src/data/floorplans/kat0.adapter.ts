@@ -37,7 +37,7 @@ const STEP_OVERRIDES: Record<string, number> = {
   'N1->N3': 10,
   'N3->N4': 7,
   'N3->N6': 5,
-  'N3->N13': 3,
+  'N3->N13': 9,
   'N13->N2': 3,
   'N4->N5': 19,
   'N5->N10': 10,
